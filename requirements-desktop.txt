@@ -1,0 +1,4 @@
+# Extra deps for the native macOS app (on top of requirements.txt).
+pywebview==5.3.2
+rumps==0.4.0
+pyinstaller==6.11.1

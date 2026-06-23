@@ -5,6 +5,7 @@ credentials reports itself as disabled rather than crashing the dashboard.
 """
 from __future__ import annotations
 
+import sys
 from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -12,14 +13,27 @@ from zoneinfo import ZoneInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
-WEB_DIR = BASE_DIR / "web"
-MIGRATIONS_DIR = BASE_DIR / "migrations"
+
+# When packaged as a .app (PyInstaller), code + bundled assets are read-only.
+# Read assets from the bundle, but write the DB / .env to a user-writable dir.
+IS_FROZEN = getattr(sys, "frozen", False)
+if IS_FROZEN:
+    RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", BASE_DIR))
+    USER_DIR = Path.home() / "Library" / "Application Support" / "DevanshOS"
+else:
+    RESOURCE_DIR = BASE_DIR
+    USER_DIR = BASE_DIR
+USER_DIR.mkdir(parents=True, exist_ok=True)
+
+WEB_DIR = RESOURCE_DIR / "web"
+MIGRATIONS_DIR = RESOURCE_DIR / "migrations"
+DATA_DIR = USER_DIR / "data"
+ENV_FILE = USER_DIR / ".env"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=BASE_DIR / ".env",
+        env_file=ENV_FILE,
         env_file_encoding="utf-8",
         extra="ignore",
     )

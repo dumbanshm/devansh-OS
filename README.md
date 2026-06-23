@@ -85,6 +85,27 @@ docker compose up --build        # → http://127.0.0.1:8000
 
 SQLite is stored in `./data` (mounted volume), so your data survives rebuilds.
 
+## Native macOS app (no terminal)
+
+Package the whole thing as a double-click `.app` — a menu-bar agent that runs
+the server in the background and opens a native window. Pure Python (pywebview +
+rumps + PyInstaller); ~25 MB, no Electron.
+
+```bash
+source .venv/bin/activate
+bash scripts/build_app.sh        # → dist/Devansh OS.app
+```
+
+Drag `dist/Devansh OS.app` to `/Applications` and launch from Spotlight. It lives
+in the menu bar (◐) with **Open Dashboard**, **Open in Browser**, **Launch at
+Login**, and **Quit**. A native window opens on launch.
+
+- Config + database live in `~/Library/Application Support/DevanshOS/` (the bundle
+  is read-only). The build script seeds these from your project `.env` + `data/`.
+- The app serves on `127.0.0.1:8770` (separate from the Docker instance's 8000).
+- The Claude provider reads `~/.claude/projects` directly — works since it's the
+  same machine.
+
 ## Manual entry (keyboard-driven)
 
 Press **`i`** (or `⌘/Ctrl-K`) anywhere to focus the command bar. Sub-3-second loop:
