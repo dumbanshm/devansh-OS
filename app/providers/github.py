@@ -8,14 +8,11 @@ counts) come from recent push events.
 """
 from __future__ import annotations
 
-import json
-from collections import defaultdict
 from datetime import datetime
 
 import httpx
 
 from ..config import get_settings
-from ..db import query
 from ..models import (
     CardSpec,
     Event,
@@ -43,6 +40,25 @@ query($login: String!) {
       }
       commitContributionsByRepository(maxRepositories: 25) {
         repository { nameWithOwner }
+        contributions { totalCount }
+      }
+    }
+  }
+}
+"""
+
+# Drill-down query — scoped with optional from/to (a single day, or last year).
+_DETAIL_QUERY = """
+query($login: String!, $from: DateTime, $to: DateTime) {
+  user(login: $login) {
+    contributionsCollection(from: $from, to: $to) {
+      totalCommitContributions
+      totalPullRequestContributions
+      totalPullRequestReviewContributions
+      totalIssueContributions
+      restrictedContributionsCount
+      commitContributionsByRepository(maxRepositories: 25) {
+        repository { nameWithOwner url }
         contributions { totalCount }
       }
     }
@@ -132,69 +148,69 @@ class GitHubProvider(DataProvider):
             )
         return events
 
-    # ── Drill-down: repos worked, branches, commit counts ──────────────────
+    # ── Drill-down: live from GraphQL contributions (includes PRIVATE) ─────
     async def fetch_detail(self, day: str | None = None) -> ProviderDetail:
-        # Aggregate from the push events we've already persisted (fast, offline).
+        """Repos worked + commit/PR/review counts straight from the GraphQL
+        contributions API, so private work shows up (the public events feed
+        doesn't). For a single day we scope the query with from/to."""
+        s = get_settings()
         if day:
-            rows = query(
-                "SELECT title, detail, ts, payload FROM events "
-                "WHERE provider=? AND day=? ORDER BY ts DESC",
-                (self.key, day),
-            )
+            variables = {"login": s.github_username,
+                         "from": f"{day}T00:00:00Z", "to": f"{day}T23:59:59Z"}
             title = f"GitHub — {day}"
         else:
-            rows = query(
-                "SELECT title, detail, ts, payload FROM events "
-                "WHERE provider=? ORDER BY ts DESC LIMIT 100",
-                (self.key,),
-            )
-            title = "GitHub — recent activity"
+            variables = {"login": s.github_username, "from": None, "to": None}
+            title = "GitHub — last year"
 
-        repos: dict[str, int] = defaultdict(int)
-        branches: set[str] = set()
-        recent: list[PanelRow] = []
-        total_commits = 0
-        for r in rows:
-            p = json.loads(r["payload"]) if r["payload"] else {}
-            repos[p.get("repo", "?")] += p.get("commits", 0)
-            if p.get("branch"):
-                branches.add(p["branch"])
-            total_commits += p.get("commits", 0)
-            if len(recent) < 15:
-                recent.append(
-                    PanelRow(label=self._short_time(r["ts"]), value=r["title"],
-                             href=p.get("url"))
-                )
+        try:
+            cc = await self._contrib(variables)
+        except Exception as exc:  # graceful: panel shows the error, board is fine
+            return ProviderDetail(
+                title="GitHub",
+                sections=[PanelSection("Couldn't load", [PanelRow("error", str(exc)[:140])])],
+            )
+
+        repos = cc.get("commitContributionsByRepository") or []
+        public_commits = cc.get("totalCommitContributions", 0)
+        private = cc.get("restrictedContributionsCount", 0)
+
+        repo_rows = [
+            PanelRow(r["repository"]["nameWithOwner"],
+                     f"{r['contributions']['totalCount']} commits",
+                     href=r["repository"].get("url"))
+            for r in sorted(repos, key=lambda x: -x["contributions"]["totalCount"])
+        ]
+        if private:
+            repo_rows.append(
+                PanelRow("private repos", f"{private} contributions · names hidden by GitHub")
+            )
 
         sections = [
-            PanelSection(
-                heading="Summary",
-                rows=[
-                    PanelRow("Commits pushed", total_commits),
-                    PanelRow("Repos worked", len(repos)),
-                    PanelRow("Branches", len(branches)),
-                ],
-            ),
-            PanelSection(
-                heading="Repos worked",
-                rows=[PanelRow(repo, f"{c} commits",
-                               href=f"https://github.com/{repo}")
-                      for repo, c in sorted(repos.items(), key=lambda x: -x[1])],
-            ),
-            PanelSection(
-                heading="Branches",
-                rows=[PanelRow("branch", b) for b in sorted(branches)] or
-                     [PanelRow("branch", "—")],
-            ),
-            PanelSection(heading="Recent pushes", rows=recent),
+            PanelSection("Summary", [
+                PanelRow("Commits (public repos)", public_commits),
+                PanelRow("Private contributions", private),
+                PanelRow("Repos worked", len(repos)),
+                PanelRow("Pull requests", cc.get("totalPullRequestContributions", 0)),
+                PanelRow("Reviews", cc.get("totalPullRequestReviewContributions", 0)),
+                PanelRow("Issues", cc.get("totalIssueContributions", 0)),
+            ]),
+            PanelSection("Repos worked", repo_rows or [PanelRow("—", "no commits in range")]),
         ]
         return ProviderDetail(title=title, sections=sections)
+
+    async def _contrib(self, variables: dict) -> dict:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.post(
+                GQL_URL, headers=self._headers(),
+                json={"query": _DETAIL_QUERY, "variables": variables},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        if data.get("errors"):
+            raise RuntimeError(data["errors"][0].get("message", "GraphQL error"))
+        return data["data"]["user"]["contributionsCollection"]
 
     # ── helpers ────────────────────────────────────────────────────────────
     def _to_local_day(self, iso_utc: str) -> str:
         dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
         return dt.astimezone(get_settings().tz).strftime("%Y-%m-%d")
-
-    def _short_time(self, iso_utc: str) -> str:
-        dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
-        return dt.astimezone(get_settings().tz).strftime("%b %d %H:%M")

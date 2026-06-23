@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     # Defaults to ~/.claude/projects; override with CLAUDE_DIR (e.g. a mount
     # path inside Docker).
     claude_dir: str = str(Path.home() / ".claude" / "projects")
+    # Path to a Hevy CSV export (or a folder of them — newest is used). Empty
+    # → look for data/hevy.csv. Drop your export there and the Gym provider
+    # lights up; no Hevy Pro / API key needed.
+    hevy_csv: str = ""
 
     # Scheduling / locale
     poll_minutes: int = 30
