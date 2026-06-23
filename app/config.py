@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     # → look for data/hevy.csv. Drop your export there and the Gym provider
     # lights up; no Hevy Pro / API key needed.
     hevy_csv: str = ""
+    # Hevy auto-sync (no Pro, works with Google sign-in). From the Hevy web app
+    # (hevy.com → DevTools → Network → a user_workouts_paged request) copy the
+    # `authorization` Bearer value (without "Bearer ") into HEVY_AUTH_TOKEN, and
+    # your Hevy username into HEVY_USERNAME. When both are set the Gym provider
+    # pulls from the API; otherwise it falls back to a CSV at data/hevy.csv.
+    hevy_auth_token: str = ""
+    hevy_username: str = ""
 
     # Scheduling / locale
     poll_minutes: int = 30

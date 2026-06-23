@@ -1,10 +1,16 @@
-"""GymProvider — workouts from a Hevy CSV export.
+"""GymProvider — workouts from Hevy, automatically or from a CSV export.
 
-Hevy's REST API is Pro-only, but its CSV data export is free for everyone:
-Hevy → Settings → Export & Import Data → Export Workouts. Drop the file at
-``data/hevy.csv`` (or point HEVY_CSV at it) and this provider parses it — no
-API key, no Pro, no manual logging. Each Hevy "set" is one CSV row; rows sharing
-a start time are one workout.
+Two free ways in (no Hevy Pro needed):
+
+1. **Auto (preferred)** — set ``HEVY_AUTH_TOKEN``. Grabbed once from the Hevy
+   web app, it lets us pull workouts from the unofficial ``workouts_batch``
+   endpoint on every poll. Works with Google sign-in (token, not password).
+   Note: this is an unofficial endpoint and can change.
+
+2. **CSV fallback** — drop a Hevy "Export Workouts" CSV at ``data/hevy.csv``.
+
+Both map to the same internal workout shape, so the heatmap / card / neglect /
+drill-down don't care where the data came from.
 """
 from __future__ import annotations
 
@@ -13,6 +19,8 @@ import time
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
+
+import httpx
 
 from ..config import DATA_DIR, get_settings
 from ..models import (
@@ -29,6 +37,10 @@ from ..models import (
 from .base import DataProvider, register
 
 CACHE_TTL = 30.0
+HEVY_API = "https://api.hevyapp.com"
+HEVY_WEB_KEY = "shelobs_hevy_web"   # web app's public api key
+API_CACHE_TTL = 120.0
+API_PAGE = 20
 _DT_FORMATS = (
     "%b %d, %Y, %I:%M %p",      # Hevy: "Jun 23, 2026, 3:03 PM"
     "%b %d, %Y, %I:%M:%S %p",
@@ -54,7 +66,114 @@ class GymProvider(DataProvider):
     ]
 
     def __init__(self) -> None:
-        self._cache: tuple | None = None
+        self._cache: tuple | None = None       # CSV cache (keyed by mtime)
+        self._api_cache: tuple | None = None   # API cache (time-based)
+
+    # ── data source dispatch ───────────────────────────────────────────────
+    def _token(self) -> str:
+        t = get_settings().hevy_auth_token.strip()
+        if t.lower().startswith("bearer "):  # tolerate a pasted "Bearer " prefix
+            t = t[7:].strip()
+        return t
+
+    def _username(self) -> str:
+        return get_settings().hevy_username.strip()
+
+    def _api_ready(self) -> bool:
+        return bool(self._token() and self._username())
+
+    def enabled(self) -> bool:
+        return self._api_ready() or self._path().is_file()
+
+    async def _workouts(self) -> dict[str, dict]:
+        """Workouts keyed by id, from the API if token+username are set, else CSV."""
+        if self._api_ready():
+            try:
+                return await self._load_api()
+            except Exception:
+                # API hiccup (expired token, endpoint change) — fall back to CSV
+                # if we have one, so the board degrades gracefully.
+                if self._path().is_file():
+                    return self._load_csv()
+                raise
+        return self._load_csv()
+
+    # ── Hevy API (unofficial web endpoint) ─────────────────────────────────
+    async def _load_api(self) -> dict[str, dict]:
+        if self._api_cache and (time.time() - self._api_cache[0]) < API_CACHE_TTL:
+            return self._api_cache[1]
+        headers = {
+            "accept": "application/json, text/plain, */*",
+            "authorization": f"Bearer {self._token()}",
+            "x-api-key": HEVY_WEB_KEY,
+            "hevy-platform": "web",
+            "origin": "https://hevy.com",
+            "referer": "https://hevy.com/",
+        }
+        username = self._username()
+        tz = get_settings().tz
+        workouts: dict[str, dict] = {}
+        offset = 0
+        async with httpx.AsyncClient(timeout=20, headers=headers) as client:
+            for _ in range(100):  # safety cap: up to 2000 workouts
+                resp = await client.get(
+                    f"{HEVY_API}/user_workouts_paged",
+                    params={"username": username, "limit": API_PAGE, "offset": offset},
+                    headers={"x-client-time": f"{time.time():.3f}"},
+                )
+                resp.raise_for_status()
+                batch = (resp.json() or {}).get("workouts") or []
+                if not batch:
+                    break
+                for w in batch:
+                    self._add_api_workout(w, workouts, tz)
+                offset += len(batch)
+                if len(batch) < API_PAGE:
+                    break
+        self._api_cache = (time.time(), workouts)
+        return workouts
+
+    @staticmethod
+    def _add_api_workout(w: dict, workouts: dict, tz) -> None:
+        start = w.get("start_time")
+        if start is None:
+            return
+        start = float(start)
+        if start > 1e12:  # milliseconds → seconds
+            start /= 1000.0
+        dt = datetime.fromtimestamp(start, tz)
+        end = w.get("end_time")
+        dur = None
+        if end:
+            end = float(end)
+            if end > 1e12:
+                end /= 1000.0
+            dur = max(0, int((end - start) // 60))
+        exercises: dict[str, int] = defaultdict(int)
+        sets = 0
+        volume = 0.0
+        for ex in w.get("exercises") or []:
+            name = (ex.get("title") or "Exercise").strip()
+            ex_sets = ex.get("sets") or []
+            exercises[name] += len(ex_sets)
+            sets += len(ex_sets)
+            for st in ex_sets:
+                try:
+                    volume += float(st.get("weight_kg") or 0) * float(st.get("reps") or 0)
+                except (TypeError, ValueError):
+                    pass
+        if not volume and w.get("estimated_volume_kg"):
+            volume = float(w["estimated_volume_kg"])
+        workouts[str(w.get("id") or start)] = {
+            "day": dt.strftime("%Y-%m-%d"),
+            "dt": dt,
+            "title": (w.get("name") or "Workout").strip(),
+            "end": "",
+            "exercises": exercises,
+            "sets": sets,
+            "volume": volume,
+            "duration_min": dur,
+        }
 
     # ── source location ────────────────────────────────────────────────────
     def _path(self) -> Path:
@@ -76,11 +195,8 @@ class GymProvider(DataProvider):
             return csvs[-1] if csvs else p
         return p
 
-    def enabled(self) -> bool:
-        return self._path().is_file()
-
     # ── CSV parsing (cached by mtime) ──────────────────────────────────────
-    def _load(self) -> dict[str, dict]:
+    def _load_csv(self) -> dict[str, dict]:
         path = self._path()
         if not path.is_file():
             return {}
@@ -175,7 +291,7 @@ class GymProvider(DataProvider):
     # ── provider contract ──────────────────────────────────────────────────
     async def fetch_metrics(self) -> list[Metric]:
         per_day: dict[str, int] = defaultdict(int)
-        for w in self._load().values():
+        for w in (await self._workouts()).values():
             per_day[w["day"]] += 1
         return [Metric(self.key, "workout", day, float(n)) for day, n in per_day.items()]
 
@@ -184,7 +300,7 @@ class GymProvider(DataProvider):
 
     async def fetch_events(self) -> list[Event]:
         events: list[Event] = []
-        for w in self._load().values():
+        for w in (await self._workouts()).values():
             n_ex = len(w["exercises"])
             events.append(Event(
                 provider=self.key, type="workout",
@@ -198,7 +314,7 @@ class GymProvider(DataProvider):
         return events
 
     async def fetch_detail(self, day: str | None = None) -> ProviderDetail:
-        workouts = sorted(self._load().values(),
+        workouts = sorted((await self._workouts()).values(),
                           key=lambda w: w["dt"] or datetime.min.replace(tzinfo=get_settings().tz),
                           reverse=True)
         if day:
