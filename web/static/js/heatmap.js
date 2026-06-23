@@ -1,5 +1,7 @@
 // Reusable GitHub-style contribution heatmap (custom, no chart lib).
-// Renders a 7-row week grid, hover tooltips, month labels and a streak footer.
+// Responsive: cells scale to fill the container width so the whole range is
+// always fully visible (no horizontal scroll). Hover tooltips, month labels
+// and a current/longest streak footer.
 
 import { cellColor } from "./palette.js";
 
@@ -27,7 +29,6 @@ export function renderHeatmap(container, data, { onCellClick } = {}) {
   container.innerHTML = "";
   container.classList.add("heatmap");
 
-  // Header: title + streaks.
   const head = document.createElement("div");
   head.className = "hm-head";
   head.innerHTML = `
@@ -47,32 +48,47 @@ export function renderHeatmap(container, data, { onCellClick } = {}) {
     return;
   }
 
-  // Group cells into weeks (columns). Pad the first week so weekday aligns.
+  // Group into weeks (columns). Pad the first week so weekday aligns (Sun top).
   const first = new Date(cells[0].day + "T00:00:00");
-  const lead = first.getDay(); // 0=Sun
+  const lead = first.getDay();
   const padded = Array(lead).fill(null).concat(cells);
-
   const weeks = [];
   for (let i = 0; i < padded.length; i += 7) weeks.push(padded.slice(i, i + 7));
+
+  // Cells per column scale via CSS grid `repeat(N, 1fr)` keyed off this var.
+  container.style.setProperty("--hm-weeks", weeks.length);
 
   const grid = document.createElement("div");
   grid.className = "hm-grid";
 
-  // Month label row.
+  // Month-label row (aligned to the body columns, offset past the dow gutter).
   const monthRow = document.createElement("div");
   monthRow.className = "hm-months";
   let lastMonth = -1;
   weeks.forEach((week) => {
-    const label = document.createElement("span");
+    const span = document.createElement("span");
     const firstReal = week.find((c) => c);
     if (firstReal) {
       const m = new Date(firstReal.day + "T00:00:00").getMonth();
-      if (m !== lastMonth) { label.textContent = MONTHS[m]; lastMonth = m; }
+      if (m !== lastMonth) { span.textContent = MONTHS[m]; lastMonth = m; }
     }
-    monthRow.appendChild(label);
+    monthRow.appendChild(span);
   });
+  grid.appendChild(monthRow);
 
-  // Columns of day cells.
+  // Lane: weekday gutter + the responsive body.
+  const lane = document.createElement("div");
+  lane.className = "hm-lane";
+
+  const dows = document.createElement("div");
+  dows.className = "hm-dows";
+  for (let i = 0; i < 7; i++) {
+    const s = document.createElement("span");
+    if (i === 1 || i === 3 || i === 5) s.textContent = DOW[i];
+    dows.appendChild(s);
+  }
+  lane.appendChild(dows);
+
   const body = document.createElement("div");
   body.className = "hm-body";
   weeks.forEach((week) => {
@@ -83,12 +99,10 @@ export function renderHeatmap(container, data, { onCellClick } = {}) {
       const cell = document.createElement("div");
       cell.className = "hm-cell";
       if (!c) { cell.classList.add("hm-pad"); col.appendChild(cell); continue; }
-      cell.style.backgroundColor = cellColor(data.color, c.value, data.scale_max);
-      cell.dataset.day = c.day;
+      cell.style.backgroundColor = cellColor(data.color, c.value, data.scale_max, data.binary);
       cell.addEventListener("mousemove", (e) => {
         const t = tooltip();
-        const unit = data.unit || "";
-        t.innerHTML = `<strong>${fmt(c.value)}${unit}</strong> · ${c.day}`;
+        t.innerHTML = `<strong>${fmt(c.value)}${data.unit || ""}</strong> · ${c.day}`;
         t.style.opacity = "1";
         t.style.left = e.pageX + 12 + "px";
         t.style.top = e.pageY + 12 + "px";
@@ -102,23 +116,7 @@ export function renderHeatmap(container, data, { onCellClick } = {}) {
     }
     body.appendChild(col);
   });
-
-  grid.appendChild(monthRow);
-
-  // Weekday gutter + body side by side.
-  const lane = document.createElement("div");
-  lane.className = "hm-lane";
-  const dows = document.createElement("div");
-  dows.className = "hm-dows";
-  [1, 3, 5].forEach((i) => {
-    const s = document.createElement("span");
-    s.textContent = DOW[i];
-    s.style.gridRow = i + 1;
-    dows.appendChild(s);
-  });
-  lane.appendChild(dows);
   lane.appendChild(body);
   grid.appendChild(lane);
-
   container.appendChild(grid);
 }

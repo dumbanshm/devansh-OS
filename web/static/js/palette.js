@@ -32,7 +32,9 @@ export function rampIndex(value, scaleMax) {
   return Math.max(1, Math.round(value));
 }
 
-export function cellColor(color, value, scaleMax) {
+export function cellColor(color, value, scaleMax, binary) {
   const ramp = RAMPS[color] || RAMPS.slate;
+  // Binary metrics (e.g. workout done): dark for 0, full color for 1+.
+  if (binary) return ramp[value > 0 ? 4 : 0];
   return ramp[rampIndex(value, scaleMax)];
 }

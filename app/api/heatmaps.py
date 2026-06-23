@@ -44,6 +44,7 @@ def heatmap(provider_key: str, metric: str, range: str = "year"):
         "color": spec.color,
         "unit": spec.unit,
         "scale_max": spec.scale_max,
+        "binary": spec.binary,
         "range": range,
         "cells": cells,
         "current_streak": agg.current_streak(provider_key, metric),

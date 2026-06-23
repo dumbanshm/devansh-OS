@@ -7,6 +7,7 @@ import { renderCards } from "./cards.js";
 import { renderNeglect } from "./neglect.js";
 import { renderTimeline } from "./timeline.js";
 import { openDetail } from "./detail.js";
+import { accent } from "./palette.js";
 
 const $ = (sel) => document.querySelector(sel);
 let heatmapRange = "year";
@@ -14,11 +15,14 @@ let heatmapRange = "year";
 async function loadHeader() {
   const s = await api.summary();
   $("#hdr-date").textContent = s.date;
-  $("#hdr-tz").textContent = s.timezone;
   const sum = $("#hdr-summary");
   if (s.summary.length) {
     sum.innerHTML = s.summary
-      .map((i) => `<span class="hdr-chip">${i.text}</span>`)
+      .map((i) =>
+        `<span class="hdr-chip">
+           <span class="hdr-dot" style="background:${accent(i.color)}"></span>
+           ${i.text}
+         </span>`)
       .join("");
   } else {
     sum.innerHTML = `<span class="hdr-chip hdr-chip-empty">nothing logged today</span>`;

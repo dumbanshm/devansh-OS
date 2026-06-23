@@ -58,7 +58,8 @@ _DT_FORMATS = (
 class GymProvider(DataProvider):
     key = "gym"
     display_name = "Gym"
-    metrics = [MetricSpec(key="workout", label="Workout", color="violet", unit="")]
+    metrics = [MetricSpec(key="workout", label="Workout", color="violet", unit="",
+                          binary=True)]
     cards = [CardSpec(metric="workout", title="Gym",
                       show=["last_active", "week_sum", "month_sum"])]
     neglect_rules = [

@@ -27,6 +27,9 @@ class MetricSpec:
     heatmap: bool = True           # show as a heatmap section
     # For sleep-style ramps the intensity maps a value range, not a count.
     scale_max: float | None = None # if set, heatmap colors scale 0..scale_max
+    # Binary metrics (e.g. "did I work out?") render dark=0 / full-color=1+,
+    # with no intensity spectrum.
+    binary: bool = False
 
 
 @dataclass
