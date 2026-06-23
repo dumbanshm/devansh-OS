@@ -1,0 +1,24 @@
+services:
+  devansh-os:
+    build: .
+    container_name: devansh-os
+    ports:
+      # Host-only by default — the dashboard is single-user/local.
+      - "127.0.0.1:8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Inside the container the app MUST bind all interfaces, otherwise the
+      # published port can't reach it. This overrides HOST/PORT from .env
+      # (which are meant for bare-metal local runs). The "127.0.0.1:8000:8000"
+      # port mapping above still keeps it host-only on your machine.
+      - HOST=0.0.0.0
+      - PORT=8000
+      # Where the mounted Claude Code logs live inside the container.
+      - CLAUDE_DIR=/claude-logs
+    volumes:
+      # Persist the SQLite database across rebuilds.
+      - ./data:/app/data
+      # Read-only mount of your Claude Code session logs for the Claude provider.
+      - ${HOME}/.claude/projects:/claude-logs:ro
+    restart: unless-stopped

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Devansh OS</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- ── Header ─────────────────────────────────────────────────────── -->
+    <header class="header">
+      <div class="header-id">
+        <div class="logo">◐ Devansh<span>OS</span></div>
+        <div class="header-when">
+          <span id="hdr-date">—</span>
+          <span class="sep">·</span>
+          <span id="hdr-clock" class="clock">00:00:00</span>
+          <span class="sep">·</span>
+          <span id="hdr-tz" class="dim">UTC</span>
+        </div>
+      </div>
+
+      <div class="header-summary">
+        <span class="summary-lbl">today</span>
+        <div id="hdr-summary" class="summary-chips"></div>
+      </div>
+
+      <div class="header-actions">
+        <button id="sync-btn" class="btn">↻ sync</button>
+      </div>
+    </header>
+
+    <!-- ── Neglect (headline) ─────────────────────────────────────────── -->
+    <section id="neglect" class="panel neglect" data-worst="ok"></section>
+
+    <!-- ── Main grid ──────────────────────────────────────────────────── -->
+    <div class="grid">
+      <div class="grid-main">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Systems</h2>
+            <span class="panel-sub">recency · trends</span>
+          </div>
+          <div class="panel-body">
+            <div id="cards" class="cards-grid"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Activity</h2>
+            <div class="range-toggle">
+              <button data-range="year" class="active">year</button>
+              <button data-range="month">month</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div id="heatmaps" class="heatmaps-grid"></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="grid-side">
+        <section class="panel panel-fill">
+          <div class="panel-head">
+            <h2>Timeline</h2>
+            <span class="panel-sub">recent activity</span>
+          </div>
+          <div class="panel-body panel-scroll">
+            <div id="timeline" class="timeline"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span class="dim">Devansh OS · local observability · read-only</span>
+      <span class="dim">click any tile to drill down</span>
+    </footer>
+  </div>
+
+  <script type="module" src="/static/js/main.js"></script>
+</body>
+</html>

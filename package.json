@@ -1,0 +1,13 @@
+{
+  "name": "devansh-os",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted personal observability dashboard",
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i web/src/input.css -o web/static/app.css --minify",
+    "watch:css": "tailwindcss -c tailwind.config.js -i web/src/input.css -o web/static/app.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}
