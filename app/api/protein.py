@@ -6,13 +6,12 @@ streaks stay in sync with the log (the log is the source of truth).
 """
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..config import get_settings
+from .. import aggregates as agg
 from ..db import (
     get_setting,
     protein_bank_add,
@@ -36,7 +35,9 @@ METRIC = "protein_g"
 
 
 def _today() -> str:
-    return datetime.now(get_settings().tz).strftime("%Y-%m-%d")
+    # Logical protein-day, anchored to the eating window — so meals logged after
+    # midnight (within a wrap-around window) stay on the day the session started.
+    return agg.protein_day()
 
 
 def _recompute(day: str) -> float:

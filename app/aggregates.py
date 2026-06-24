@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 from .config import get_settings
-from .db import metric_series
+from .db import get_setting, metric_series
 
 
 def today() -> date:
@@ -17,6 +17,23 @@ def today() -> date:
 
 def _iso(d: date) -> str:
     return d.strftime("%Y-%m-%d")
+
+
+def protein_day(now: datetime | None = None) -> str:
+    """Logical protein-day, anchored to the eating window so a session that runs
+    past midnight stays on a single day.
+
+    For a wrap-around window (end <= start, e.g. 12:00 → 04:00) the post-midnight
+    tail ``[00:00, end)`` belongs to the day the window opened — i.e. yesterday.
+    For a normal same-day window this is just the calendar date.
+    """
+    now = now or datetime.now(get_settings().tz)
+    ws = int(get_setting("protein_window_start", 8) or 8)
+    we = int(get_setting("protein_window_end", 22) or 22)
+    d = now.date()
+    if we <= ws and now.hour < we:
+        d = d - timedelta(days=1)
+    return _iso(d)
 
 
 def series_for_year(provider: str, metric: str) -> dict[str, float]:

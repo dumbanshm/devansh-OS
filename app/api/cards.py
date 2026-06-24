@@ -21,11 +21,18 @@ def _protein_pace() -> dict:
     ws = float(get_setting("protein_window_start", 8) or 8)
     we = float(get_setting("protein_window_end", 22) or 22)
     now = datetime.now(get_settings().tz)
-    today = now.strftime("%Y-%m-%d")
+    today = agg.protein_day(now)
     today_g = protein_day_total(today)
 
-    span = max(we - ws, 0.1)
-    frac = (now.hour + now.minute / 60 - ws) / span
+    # Eating windows may wrap past midnight (e.g. 12:00 → 04:00). Extend the end
+    # past 24h and lift the post-midnight tail into the same frame so the ramp is
+    # monotonic across the whole window.
+    we_eff = we + 24 if we <= ws else we
+    t = now.hour + now.minute / 60
+    if we <= ws and t < we:
+        t += 24
+    span = max(we_eff - ws, 0.1)
+    frac = (t - ws) / span
     frac = min(1.0, max(0.0, frac))
     expected = target * frac
     delta = today_g - expected
