@@ -155,3 +155,94 @@ def metric_series(provider: str, metric: str, start_day: str, end_day: str) -> d
 
 def all_sync_state() -> dict[str, sqlite3.Row]:
     return {r["provider"]: r for r in query("SELECT * FROM sync_state")}
+
+
+# ── App settings (generic key/value) ───────────────────────────────────────
+
+def get_setting(key: str, default: Any = None) -> Any:
+    """Read a value from app_settings; tolerant of a missing table (pre-migration)."""
+    try:
+        row = query_one("SELECT value FROM app_settings WHERE key=?", (key,))
+    except sqlite3.OperationalError:
+        return default
+    return row["value"] if row else default
+
+
+def set_setting(key: str, value: Any) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO app_settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value=excluded.value
+            """,
+            (key, str(value)),
+        )
+
+
+# ── Protein bank + log ──────────────────────────────────────────────────────
+
+def protein_bank_all() -> list[sqlite3.Row]:
+    return query("SELECT * FROM protein_bank ORDER BY name COLLATE NOCASE")
+
+
+def protein_bank_get(food_id: int) -> sqlite3.Row | None:
+    return query_one("SELECT * FROM protein_bank WHERE id=?", (food_id,))
+
+
+def protein_bank_add(name: str, protein_g: float, serving_label: str | None) -> int:
+    with connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO protein_bank (name, protein_g, serving_label) VALUES (?, ?, ?)",
+            (name, float(protein_g), serving_label),
+        )
+        return int(cur.lastrowid)
+
+
+def protein_bank_update(food_id: int, name: str, protein_g: float, serving_label: str | None) -> None:
+    with connect() as conn:
+        conn.execute(
+            "UPDATE protein_bank SET name=?, protein_g=?, serving_label=? WHERE id=?",
+            (name, float(protein_g), serving_label, food_id),
+        )
+
+
+def protein_bank_delete(food_id: int) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM protein_bank WHERE id=?", (food_id,))
+
+
+def protein_entries(day: str) -> list[sqlite3.Row]:
+    return query(
+        "SELECT * FROM protein_log WHERE day=? ORDER BY logged_at", (day,)
+    )
+
+
+def protein_day_total(day: str) -> float:
+    row = query_one("SELECT COALESCE(SUM(grams), 0) AS t FROM protein_log WHERE day=?", (day,))
+    return float(row["t"]) if row else 0.0
+
+
+def protein_log_add(
+    day: str, food_id: int | None, food_name: str, servings: float, grams: float
+) -> int:
+    with connect() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO protein_log (day, food_id, food_name, servings, grams, logged_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (day, food_id, food_name, float(servings), float(grams), _now_iso()),
+        )
+        return int(cur.lastrowid)
+
+
+def protein_log_delete(entry_id: int) -> str | None:
+    """Delete a log entry; return its day (so the caller can recompute the total)."""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT day FROM protein_log WHERE id=?", (entry_id,)
+        ).fetchone()
+        if not row:
+            return None
+        conn.execute("DELETE FROM protein_log WHERE id=?", (entry_id,))
+        return row["day"]

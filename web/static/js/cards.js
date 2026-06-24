@@ -23,6 +23,17 @@ export function renderCards(container, data, { onCardClick } = {}) {
     const recencyClass = r.days_since === 0 ? "recency-fresh"
       : stale ? "recency-stale" : "recency-warm";
 
+    // Protein leads with pace (goal vs eating-window), not a recency line.
+    const lead = card.pace
+      ? `<div class="card-pace pace-${card.pace.state}">
+           <span class="card-pace-main">${card.pace.today_g}<span class="card-pace-target">/${card.pace.target_g}g</span></span>
+           <span class="card-pace-sub">${card.pace.text}</span>
+         </div>`
+      : `<div class="card-recency ${recencyClass}">
+           <span class="card-recency-lbl">last</span>
+           <span class="card-recency-val">${r.text}</span>
+         </div>`;
+
     const stats = card.stats.map((s) =>
       `<div class="card-stat">
          <span class="card-stat-val">${s.value}${s.unit || ""}</span>
@@ -34,10 +45,7 @@ export function renderCards(container, data, { onCardClick } = {}) {
         <span class="card-title">${card.title}</span>
         <span class="card-meta">${statusDot(card.sync_status)}</span>
       </div>
-      <div class="card-recency ${recencyClass}">
-        <span class="card-recency-lbl">last</span>
-        <span class="card-recency-val">${r.text}</span>
-      </div>
+      ${lead}
       <div class="card-stats">${stats || ""}</div>
       <div class="card-foot">
         <span class="card-streak">▲ ${card.current_streak}d streak</span>

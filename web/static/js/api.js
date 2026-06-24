@@ -29,4 +29,16 @@ export const api = {
   entry: (cmd) => http("POST", "/api/entry", { cmd }),
   syncOne: (provider) => http("POST", `/api/sync/${provider}`),
   syncAll: () => http("POST", "/api/sync"),
+
+  // Protein
+  proteinLog: (day) =>
+    http("GET", `/api/protein/log${day ? `?day=${day}` : ""}`),
+  proteinAdd: (entry) => http("POST", "/api/protein/log", entry),
+  proteinDelete: (id) => http("DELETE", `/api/protein/log/${id}`),
+  proteinBank: () => http("GET", "/api/protein/bank"),
+  proteinBankAdd: (item) => http("POST", "/api/protein/bank", item),
+  proteinBankUpdate: (id, item) => http("PUT", `/api/protein/bank/${id}`, item),
+  proteinBankDelete: (id) => http("DELETE", `/api/protein/bank/${id}`),
+  proteinSettings: () => http("GET", "/api/settings/protein"),
+  proteinSettingsSave: (s) => http("PUT", "/api/settings/protein", s),
 };

@@ -232,7 +232,18 @@ kbd {
 .range-toggle button.active { background: var(--panel-2); color: var(--text-strong); }
 
 /* ── Cards ───────────────────────────────────────────────────────────── */
-.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 12px; }
+/* Single fixed-height row; ~4 cards visible, the rest scroll horizontally. */
+.cards-grid {
+  display: flex; gap: 12px; overflow-x: auto; overflow-y: hidden;
+  padding-bottom: 6px; scroll-snap-type: x proximity;
+}
+.cards-grid .card {
+  flex: 0 0 max(232px, calc((100% - 36px) / 4));
+  scroll-snap-align: start;
+}
+.cards-grid::-webkit-scrollbar { height: 7px; }
+.cards-grid::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 4px; }
+.cards-grid::-webkit-scrollbar-track { background: transparent; }
 .card {
   text-align: left; cursor: pointer;
   background: var(--panel-2); border: 1px solid var(--border-2);
@@ -354,6 +365,62 @@ kbd {
 .d-row-val { color: var(--text-strong); text-align: right; }
 .d-empty, .d-error { color: var(--dimmer); }
 .d-error { color: var(--crit); }
+
+/* ── Protein: pace (card), log widget, settings ──────────────────────── */
+.card-pace { display: flex; flex-direction: column; gap: 2px; }
+.card-pace-main { font-size: 20px; font-weight: 600; font-family: var(--mono); letter-spacing: -0.02em; color: var(--text-strong); }
+.card-pace-target { font-size: 13px; color: var(--dim); font-weight: 400; }
+.card-pace-sub { font-family: var(--mono); font-size: 11px; }
+.pace-behind .card-pace-sub { color: var(--crit); }
+.pace-ahead  .card-pace-sub { color: var(--ok); }
+.pace-ontrack .card-pace-sub { color: var(--dim); }
+
+.pl-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.pl-total { font-family: var(--mono); font-size: 18px; color: #d09340; font-weight: 600; }
+.pl-target { font-size: 12px; color: var(--dim); font-weight: 400; }
+.pl-bar { flex: 1; height: 5px; background: var(--bg); border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
+.pl-bar span { display: block; height: 100%; background: #9a6c2c; transition: width 0.25s; }
+.pl-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.pl-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 4px 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 5px; }
+.pl-name { flex: 1; color: var(--text); }
+.pl-g { font-family: var(--mono); font-size: 11px; color: var(--text-strong); }
+.pl-del { background: none; border: none; color: var(--dimmer); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
+.pl-del:hover { color: var(--crit); }
+.pl-empty { color: var(--dim); font-size: 12px; padding: 4px 0; }
+.pl-add-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.pl-in { background: var(--bg); border: 1px solid var(--border-2); border-radius: 5px; color: var(--text-strong); font-family: var(--mono); font-size: 12px; padding: 6px 8px; outline: none; }
+.pl-in:focus { border-color: var(--info); }
+.pl-select { flex: 1; min-width: 120px; }
+.pl-name-in { flex: 1; min-width: 100px; }
+.pl-num { width: 64px; }
+.pl-save { font-family: var(--mono); font-size: 10px; color: var(--dim); display: inline-flex; align-items: center; gap: 3px; }
+.pl-add { background: #3a2a14; border: 1px solid #6b4a1e; color: #d09340; font-family: var(--mono); font-size: 12px; padding: 6px 12px; border-radius: 5px; cursor: pointer; }
+.pl-add:hover { background: #4a3518; }
+.btn-link { background: none; border: none; color: var(--dim); font-family: var(--mono); font-size: 11px; cursor: pointer; padding: 2px 4px; }
+.btn-link:hover { color: var(--text-strong); }
+
+/* Protein panel (reuses .detail-panel chrome) */
+.protein-panel { width: 420px; border-top-color: #9a6c2c; }
+.protein-panel .detail-body { flex: 1; }
+.protein-panel-foot { padding: 14px 18px; border-top: 1px solid var(--border); }
+.protein-panel-foot .btn-link { font-size: 12px; color: #d09340; }
+.protein-panel-foot .btn-link:hover { color: #e3a955; }
+
+/* Settings modal (reuses .detail-panel chrome) */
+.settings-panel { width: 480px; border-top-color: #9a6c2c; }
+.st-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.st-field { display: flex; flex-direction: column; gap: 4px; }
+.st-field span { font-size: 10px; color: var(--dim); font-family: var(--mono); }
+.st-in { background: var(--bg); border: 1px solid var(--border-2); border-radius: 5px; color: var(--text-strong); font-family: var(--mono); font-size: 12px; padding: 6px 8px; outline: none; width: 100%; }
+.st-in:focus { border-color: var(--info); }
+.st-note { font-size: 10px; color: var(--dimmer); font-family: var(--mono); margin: 8px 0 0; line-height: 1.5; }
+.st-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+.st-table th { text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dimmer); font-weight: 600; padding: 4px 4px; }
+.st-table td { padding: 3px 4px; }
+.st-table .st-g { width: 56px; }
+.st-table .st-serv { width: 90px; }
+.st-actions { white-space: nowrap; text-align: right; }
+.st-add-row { display: grid; grid-template-columns: 1fr 56px 1fr auto; gap: 6px; align-items: center; }
 
 /* ── Toast ───────────────────────────────────────────────────────────── */
 .toast {

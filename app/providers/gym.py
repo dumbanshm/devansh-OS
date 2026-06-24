@@ -40,7 +40,7 @@ CACHE_TTL = 30.0
 HEVY_API = "https://api.hevyapp.com"
 HEVY_WEB_KEY = "shelobs_hevy_web"   # web app's public api key
 API_CACHE_TTL = 120.0
-API_PAGE = 20
+API_PAGE = 5  # Hevy's web endpoint now rejects limit > 5 with HTTP 400.
 _DT_FORMATS = (
     "%b %d, %Y, %I:%M %p",      # Hevy: "Jun 23, 2026, 3:03 PM"
     "%b %d, %Y, %I:%M:%S %p",
@@ -87,16 +87,15 @@ class GymProvider(DataProvider):
         return self._api_ready() or self._path().is_file()
 
     async def _workouts(self) -> dict[str, dict]:
-        """Workouts keyed by id, from the API if token+username are set, else CSV."""
+        """Workouts keyed by id, from the API if token+username are set, else CSV.
+
+        When a token is configured we treat the API as the source of truth and let
+        failures (expired token, endpoint change) propagate so ``sync()`` records an
+        error and the card shows it — rather than silently serving a stale CSV
+        export that looks like a successful sync.
+        """
         if self._api_ready():
-            try:
-                return await self._load_api()
-            except Exception:
-                # API hiccup (expired token, endpoint change) — fall back to CSV
-                # if we have one, so the board degrades gracefully.
-                if self._path().is_file():
-                    return self._load_csv()
-                raise
+            return await self._load_api()
         return self._load_csv()
 
     # ── Hevy API (unofficial web endpoint) ─────────────────────────────────
@@ -116,7 +115,7 @@ class GymProvider(DataProvider):
         workouts: dict[str, dict] = {}
         offset = 0
         async with httpx.AsyncClient(timeout=20, headers=headers) as client:
-            for _ in range(100):  # safety cap: up to 2000 workouts
+            for _ in range(400):  # safety cap: up to 2000 workouts (5/page)
                 resp = await client.get(
                     f"{HEVY_API}/user_workouts_paged",
                     params={"username": username, "limit": API_PAGE, "offset": offset},

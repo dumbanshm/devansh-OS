@@ -13,7 +13,7 @@ hiddenimports = (
         # providers are imported via app.providers but list them to be safe
         "app.providers.github", "app.providers.leetcode", "app.providers.gym",
         "app.providers.sleep", "app.providers.chemvecto", "app.providers.claude",
-        "app.providers.manual",
+        "app.providers.protein", "app.providers.manual",
     ]
 )
 

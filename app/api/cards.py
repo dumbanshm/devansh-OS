@@ -1,13 +1,52 @@
 """/api/cards — modular KPI cards, recency-first (systems, not scores)."""
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter
 
 from .. import aggregates as agg
-from ..db import all_sync_state
+from ..config import get_settings
+from ..db import all_sync_state, get_setting, protein_day_total
 from ..providers.base import registry
 
 router = APIRouter()
+
+
+def _protein_pace() -> dict:
+    """Goal-vs-eating-window pace for the protein card. Expected grams ramp
+    across the configured eating window (default 08:00–22:00), so we aren't
+    flagged 'behind' before we've had a chance to eat."""
+    target = float(get_setting("protein_target_g", 130) or 130)
+    ws = float(get_setting("protein_window_start", 8) or 8)
+    we = float(get_setting("protein_window_end", 22) or 22)
+    now = datetime.now(get_settings().tz)
+    today = now.strftime("%Y-%m-%d")
+    today_g = protein_day_total(today)
+
+    span = max(we - ws, 0.1)
+    frac = (now.hour + now.minute / 60 - ws) / span
+    frac = min(1.0, max(0.0, frac))
+    expected = target * frac
+    delta = today_g - expected
+
+    if delta >= 10:
+        state, text = "ahead", f"{round(delta)}g ahead"
+    elif delta <= -10:
+        state, text = "behind", f"{round(-delta)}g behind pace"
+    else:
+        state, text = "ontrack", "on track"
+    if today_g >= target:
+        state, text = "ahead", "target hit"
+
+    return {
+        "today_g": round(today_g, 1),
+        "target_g": round(target, 1),
+        "expected_g": round(expected),
+        "delta": round(delta),
+        "state": state,
+        "text": text,
+    }
 
 # Maps a CardSpec "show" key to (label, compute) — extend freely.
 _STATS = {
@@ -53,7 +92,7 @@ def cards():
                     stats.append({"label": label,
                                   "value": _fmt(val),
                                   "unit": unit})
-            out.append({
+            entry = {
                 "provider": provider.key,
                 "title": card.title,
                 "color": spec.color if spec else "slate",
@@ -63,7 +102,11 @@ def cards():
                 "current_streak": agg.current_streak(provider.key, metric),
                 "sync_status": state["status"] if state else "never",
                 "sync_message": state["message"] if state else "",
-            })
+            }
+            # Protein leads with pace (goal vs eating-window), not recency.
+            if provider.key == "protein":
+                entry["pace"] = _protein_pace()
+            out.append(entry)
     return {"cards": out}
 
 

@@ -7,6 +7,8 @@ import { renderCards } from "./cards.js";
 import { renderNeglect } from "./neglect.js";
 import { renderTimeline } from "./timeline.js";
 import { openDetail } from "./detail.js";
+import { openProtein } from "./protein.js";
+import { openSettings } from "./settings.js";
 import { accent } from "./palette.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -36,7 +38,10 @@ async function loadNeglect() {
 
 async function loadCards() {
   const data = await api.cards();
-  renderCards($("#cards"), data, { onCardClick: (p) => openDetail(p) });
+  renderCards($("#cards"), data, {
+    onCardClick: (p) =>
+      p === "protein" ? openProtein({ onChange: onProteinChange }) : openDetail(p),
+  });
 }
 
 async function loadHeatmaps() {
@@ -65,6 +70,12 @@ async function loadTimeline() {
   renderTimeline($("#timeline"), data, { onClick: (p, day) => openDetail(p, day) });
 }
 
+// Logging protein changes the day total → refresh the card (pace), the heatmap
+// and the header chips, but not the whole board.
+async function onProteinChange() {
+  await Promise.allSettled([loadHeader(), loadCards(), loadHeatmaps()]);
+}
+
 async function refreshAll() {
   await Promise.allSettled([
     loadHeader(), loadNeglect(), loadCards(), loadHeatmaps(), loadTimeline(),
@@ -83,6 +94,12 @@ function startClock() {
 }
 
 function wireControls() {
+  $("#protein-btn").addEventListener("click", () =>
+    openProtein({ onChange: onProteinChange }));
+
+  $("#settings-btn").addEventListener("click", () =>
+    openSettings({ onChange: refreshAll }));
+
   $("#sync-btn").addEventListener("click", async (e) => {
     e.target.disabled = true;
     e.target.textContent = "syncing…";

@@ -133,16 +133,23 @@ class GitHubProvider(DataProvider):
             repo = ev["repo"]["name"]
             ref = ev["payload"].get("ref", "")
             branch = ref.split("/")[-1] if ref else ""
-            n = ev["payload"].get("size", 0)
+            size = ev["payload"].get("size")
+            # GitHub's events feed sometimes returns no commit count (size=null).
+            # Only show a count when it's actually a positive number.
+            n = size if isinstance(size, int) else None
+            if n and n > 0:
+                title = f"Pushed {n} commit{'s' if n != 1 else ''} to {repo}"
+            else:
+                title = f"Pushed to {repo}"
             events.append(
                 Event(
                     provider=self.key,
                     type="commit",
                     ts=created,
                     day=day,
-                    title=f"Pushed {n} commit{'s' if n != 1 else ''} to {repo}",
+                    title=title,
                     detail=f"branch {branch}" if branch else None,
-                    payload={"repo": repo, "branch": branch, "commits": n,
+                    payload={"repo": repo, "branch": branch, "commits": n or 0,
                              "url": f"https://github.com/{repo}"},
                 )
             )

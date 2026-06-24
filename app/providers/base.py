@@ -48,6 +48,11 @@ class DataProvider(ABC):
     def primary_metric(self) -> str:
         return self.metrics[0].key if self.metrics else ""
 
+    # ── Lifecycle ──────────────────────────────────────────────────────────
+    def on_startup(self) -> None:
+        """Called once after the DB is initialized. Override to load DB-backed
+        config (e.g. a settings-driven heatmap scale). Default: no-op."""
+
     # ── Core fetch contract (override the ones you need) ───────────────────
     async def fetch_metrics(self) -> list[Metric]:
         return []
