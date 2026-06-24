@@ -108,6 +108,18 @@ def insert_events(rows: Iterable[dict[str, Any]]) -> None:
         )
 
 
+def delete_events(provider: str, title_like: str) -> int:
+    """Delete a provider's events whose title matches a SQL LIKE pattern. Used to
+    retire superseded events (e.g. push aggregates now shown as per-commit rows).
+    Returns the number of rows removed."""
+    with connect() as conn:
+        cur = conn.execute(
+            "DELETE FROM events WHERE provider = ? AND title LIKE ?",
+            (provider, title_like),
+        )
+        return cur.rowcount
+
+
 def set_sync_state(provider: str, status: str, message: str = "", success: bool = False) -> None:
     now = _now_iso()
     with connect() as conn:

@@ -58,6 +58,16 @@ class Settings(BaseSettings):
     hevy_auth_token: str = ""
     hevy_username: str = ""
 
+    # Local git commit counting — the primary source for the commits counter.
+    # Comma-separated paths; each may be a git repo or a folder containing repos
+    # (scanned one level deep for `.git`). Counts commits on ALL branches, so
+    # feature-branch and private-repo work shows up without pushing or merging.
+    # Defaults to ~/DevDaddy; override with GIT_REPOS.
+    git_repos: str = str(Path.home() / "DevDaddy")
+    # Optional comma-separated author email/name substrings to count. Empty →
+    # count every commit in the scanned repos (best for solo / AI-pair repos).
+    git_authors: str = ""
+
     # Scheduling / locale
     poll_minutes: int = 30
     timezone: str = "UTC"
@@ -65,6 +75,14 @@ class Settings(BaseSettings):
     # Server
     host: str = "127.0.0.1"
     port: int = 8000
+
+    @property
+    def git_repo_paths(self) -> list[str]:
+        return [p.strip() for p in self.git_repos.split(",") if p.strip()]
+
+    @property
+    def git_author_matchers(self) -> list[str]:
+        return [a.strip().lower() for a in self.git_authors.split(",") if a.strip()]
 
     @property
     def db_path(self) -> Path:

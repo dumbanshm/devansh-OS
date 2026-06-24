@@ -48,6 +48,8 @@ async function loadHeatmaps() {
   const { heatmaps } = await api.heatmaps();
   const wrap = $("#heatmaps");
   wrap.innerHTML = "";
+  // Short ranges are narrow, so pack two per row instead of letting cells balloon.
+  wrap.classList.toggle("heatmaps-grid--cols", heatmapRange !== "year");
   await Promise.all(
     heatmaps.map(async (h) => {
       const cell = document.createElement("div");

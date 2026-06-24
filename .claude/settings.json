@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -d .venv venv)",
+      "Bash(which pyinstaller *)",
+      "Bash(node --version)",
+      "Bash(npx --version)",
+      "Bash(osascript -e 'quit app \"Devansh OS\"')",
+      "Bash(pkill -f \"dist/Devansh OS.app\")",
+      "Bash(open \"dist/Devansh OS.app\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:8770/)",
+      "Bash(curl -s http://127.0.0.1:8770/static/app.css)",
+      "Read(//Users/devansh/DevDaddy/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/providers/github.py'\\).read\\(\\)\\); print\\('syntax OK'\\)\")",
+      "Bash(python3 -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\)\\) for f in ['app/gitscan.py','app/config.py','app/providers/github.py']]; print\\('syntax OK'\\)\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:8770/api/summary)",
+      "Bash(curl -s -X POST http://127.0.0.1:8770/api/sync/github)",
+      "Bash(curl -s http://127.0.0.1:8770/api/cards)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(c.get\\('title'\\), '→ value:', c.get\\('value'\\), '| sync:', c.get\\('sync_status'\\), c.get\\('sync_message'\\)\\) for c in \\(d if isinstance\\(d,list\\) else d.get\\('cards',[]\\)\\) if 'commit' in str\\(c.get\\('title',''\\)\\).lower\\(\\) or c.get\\('provider'\\)=='github']\")",
+      "Bash(find \"dist/Devansh OS.app\" -name \"gitscan*\")",
+      "Bash(kill 1616)",
+      "Bash(lsof -nP -iTCP:8770 -sTCP:LISTEN -t)",
+      "Bash(lsof -nP -iTCP:8770 -sTCP:LISTEN)",
+      "Bash(curl -s -o /dev/null -w \"http %{http_code}\\\\n\" http://127.0.0.1:8770/api/summary)",
+      "Bash(curl -s \"http://127.0.0.1:8770/api/timeline?days=3\")"
+    ]
+  }
+}

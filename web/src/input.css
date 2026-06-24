@@ -273,8 +273,16 @@ kbd {
 /* ── Heatmaps ────────────────────────────────────────────────────────── */
 /* Stack heatmaps one-per-row so each full range is completely visible. */
 .heatmaps-grid { display: flex; flex-direction: column; gap: 14px; }
+/* Short ranges (e.g. month): pin cells to a fixed year-sized square and let the
+   cards shrink to content + wrap, so cells never balloon and as many heatmaps as
+   fit sit on one row. */
+.heatmaps-grid.heatmaps-grid--cols { flex-direction: row; flex-wrap: wrap; align-items: flex-start; }
+.heatmaps-grid--cols .heatmap-card { flex: 0 0 auto; }
+.heatmaps-grid--cols .hm-grid { width: auto; }
+.heatmaps-grid--cols .hm-body,
+.heatmaps-grid--cols .hm-months { grid-template-columns: repeat(var(--hm-weeks), var(--hm-cell)); }
 .heatmap-card { background: var(--panel-2); border: 1px solid var(--border-2); border-radius: var(--radius); padding: 16px 18px; }
-.heatmap { --hm-gap: 4px; --hm-gutter: 30px; --hm-weeks: 53; }
+.heatmap { --hm-gap: 4px; --hm-gutter: 30px; --hm-weeks: 53; --hm-cell: 15px; }
 .hm-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .hm-title { font-size: 13px; font-weight: 600; color: var(--text-strong); }
 .hm-streaks { font-family: var(--mono); font-size: 11px; color: var(--text); display: flex; gap: 8px; }
