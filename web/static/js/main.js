@@ -10,6 +10,9 @@ import { openDetail } from "./detail.js";
 import { openProtein } from "./protein.js";
 import { openSettings } from "./settings.js";
 import { accent } from "./palette.js";
+import { initSpatialNav } from "./spatial_nav.js";
+import { initPaletteUI } from "./palette_ui.js";
+import { registerProvider } from "./registry.js";
 
 const $ = (sel) => document.querySelector(sel);
 let heatmapRange = "year";
@@ -96,6 +99,36 @@ function startClock() {
 }
 
 function wireControls() {
+  registerProvider("System", () => [
+    {
+      id: "sys.protein",
+      title: "Add Protein",
+      category: "Actions",
+      keywords: ["food", "diet", "nutrition", "eat"],
+      action: () => openProtein({ onChange: onProteinChange })
+    },
+    {
+      id: "sys.settings",
+      title: "Open Settings",
+      category: "Navigation",
+      keywords: ["config", "preferences", "edit"],
+      action: () => openSettings({ onChange: refreshAll })
+    },
+    {
+      id: "sys.sync",
+      title: "Force Sync All",
+      category: "Actions",
+      keywords: ["refresh", "reload", "update"],
+      action: async () => {
+        const btn = $("#sync-btn");
+        btn.disabled = true;
+        btn.textContent = "syncing…";
+        try { await api.syncAll(); await refreshAll(); }
+        finally { btn.disabled = false; btn.textContent = "sync"; }
+      }
+    }
+  ]);
+
   $("#protein-btn").addEventListener("click", () =>
     openProtein({ onChange: onProteinChange }));
 
@@ -120,6 +153,8 @@ function wireControls() {
 }
 
 async function main() {
+  initSpatialNav();
+  initPaletteUI();
   startClock();
   wireControls();
   await refreshAll();

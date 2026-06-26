@@ -109,7 +109,14 @@ export function renderHeatmap(container, data, { onCellClick } = {}) {
       });
       cell.addEventListener("mouseleave", () => { tooltip().style.opacity = "0"; });
       if (onCellClick) {
+        cell.setAttribute("tabindex", "0");
         cell.addEventListener("click", () => onCellClick(c.day, c.value));
+        cell.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onCellClick(c.day, c.value);
+          }
+        });
         cell.style.cursor = "pointer";
       }
       col.appendChild(cell);

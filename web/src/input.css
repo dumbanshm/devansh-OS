@@ -173,7 +173,7 @@ kbd {
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
-.btn:hover { background: #1c222b; border-color: #38414e; }
+.btn:hover, .btn:focus-visible { background: #1c222b; border-color: #38414e; outline: none; }
 .btn:disabled { opacity: 0.5; cursor: default; }
 
 .cmd-hint {
@@ -252,7 +252,7 @@ kbd {
   display: flex; flex-direction: column; gap: 11px;
   transition: border-color 0.15s, transform 0.1s, background 0.15s;
 }
-.card:hover { background: #1b212a; transform: translateY(-1px); border-color: var(--accent); }
+.card:hover, .card:focus-visible { background: #1b212a; transform: translateY(-1px); border-color: var(--accent); outline: none; }
 .card-head { display: flex; align-items: center; justify-content: space-between; }
 .card-title { font-size: 12px; font-weight: 600; color: var(--text-strong); }
 .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
@@ -314,7 +314,7 @@ kbd {
 }
 .hm-col { display: flex; flex-direction: column; gap: var(--hm-gap); }
 .hm-cell { width: 100%; aspect-ratio: 1 / 1; border-radius: 2px; background: var(--panel-2); transition: outline 0.1s; }
-.hm-cell:hover { outline: 1px solid var(--text); outline-offset: 1px; }
+.hm-cell:hover, .hm-cell:focus-visible { outline: 1px solid var(--text); outline-offset: 1px; }
 .hm-pad { background: transparent; }
 .hm-empty { color: var(--dim); font-size: 11px; padding: 12px 0; }
 .hm-error { color: var(--crit); font-size: 11px; font-family: var(--mono); }
@@ -337,7 +337,7 @@ kbd {
   text-align: left; background: transparent; border: none; cursor: pointer;
   padding: 5px 6px; border-radius: 5px; color: var(--text); font-size: 12.5px;
 }
-.tl-item:hover { background: var(--panel-2); }
+.tl-item:hover, .tl-item:focus-visible { background: var(--panel-2); outline: none; }
 .tl-dot { width: 8px; height: 8px; border-radius: 50%; }
 .tl-time { font-family: var(--mono); font-size: 10px; color: var(--dim); }
 .tl-prov { font-family: var(--mono); font-size: 10px; font-weight: 600; }
@@ -445,3 +445,43 @@ kbd {
   .header { flex-direction: column; align-items: stretch; }
   .cmd-input, .cmd-input:focus { width: 100%; }
 }
+
+/* ── Command Palette ─────────────────────────────────────────────────── */
+.cmd-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  opacity: 0; pointer-events: none; transition: opacity 0.15s; z-index: 400;
+  display: flex; align-items: flex-start; justify-content: center; padding-top: 12vh;
+}
+.cmd-overlay.open { opacity: 1; pointer-events: auto; }
+.cmd-panel {
+  width: 100%; max-width: 600px; background: var(--panel); border: 1px solid var(--border-2);
+  border-radius: 12px; box-shadow: 0 24px 48px rgba(0,0,0,0.5); overflow: hidden;
+  transform: scale(0.97); transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cmd-overlay.open .cmd-panel { transform: scale(1); }
+.cmd-search-wrap { position: relative; display: flex; align-items: center; border-bottom: 1px solid var(--border); }
+.cmd-search {
+  width: 100%; background: transparent; border: none; color: var(--text-strong);
+  font-size: 18px; padding: 16px 20px; outline: none; font-family: var(--sans);
+}
+.cmd-search::placeholder { color: var(--dimmer); }
+.cmd-kbd {
+  position: absolute; right: 16px; font-family: var(--mono); font-size: 10px;
+  color: var(--dim); background: var(--panel-2); padding: 2px 6px; border-radius: 4px;
+  border: 1px solid var(--border-2);
+}
+.cmd-results { max-height: 400px; overflow-y: auto; padding: 8px 0; }
+.cmd-results::-webkit-scrollbar { width: 8px; }
+.cmd-results::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 4px; }
+.cmd-group { padding: 6px 0; }
+.cmd-group-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); padding: 4px 16px; margin-bottom: 2px; }
+.cmd-item {
+  display: flex; align-items: center; justify-content: space-between; padding: 10px 16px;
+  cursor: pointer; color: var(--text); font-size: 14px; border-left: 2px solid transparent;
+}
+.cmd-item-title { font-weight: 500; }
+.cmd-item-prov { font-family: var(--mono); font-size: 11px; color: var(--dimmer); }
+.cmd-item:hover, .cmd-item.active { background: var(--panel-2); border-left-color: var(--info); color: var(--text-strong); }
+.cmd-item.active .cmd-item-prov { color: var(--dim); }
+.cmd-empty { padding: 20px; text-align: center; color: var(--dim); font-size: 13px; }

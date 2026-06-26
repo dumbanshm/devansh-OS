@@ -81,5 +81,18 @@
   </div>
 
   <script type="module" src="/static/js/main.js"></script>
+
+  <!-- ── Command Palette ────────────────────────────────────────────── -->
+  <div id="cmd-palette-overlay" class="cmd-overlay">
+    <div class="cmd-panel">
+      <div class="cmd-search-wrap">
+        <input type="text" id="cmd-search-input" class="cmd-search" placeholder="Type a command or search..." autocomplete="off">
+        <span class="cmd-kbd">ESC</span>
+      </div>
+      <div id="cmd-results" class="cmd-results">
+        <!-- populated by js -->
+      </div>
+    </div>
+  </div>
 </body>
 </html>
