@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jarvis Protocol - Integration Plan</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0a0c0f;
+      color: #c9d1dc;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    h1, h2, h3 { color: #eef2f7; }
+    h1 { border-bottom: 2px solid #1f242d; padding-bottom: 10px; }
+    .phase { background: #11141a; border: 1px solid #1f242d; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .phase h2 { margin-top: 0; color: #4391d6; }
+    code { background: #161a21; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #d0a83e; }
+    .highlight { color: #3f9a5a; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h1>Project Jarvis: Vitals & AI Correlation Engine</h1>
+  <p><strong>Goal:</strong> Transform Devansh OS from a reactive dashboard into a proactive, intelligent health and productivity assistant. The system will ingest temporal vitals data and correlate it with existing productivity metrics (coding, gym, deep work, sleep) to generate actionable insights.</p>
+
+  <div class="phase">
+    <h2>Phase 1: Ingestion (Vitals API Integration)</h2>
+    <p>Connect to a hardware health tracker (Fitbit, Oura, or Apple HealthKit) to pull high-fidelity physiological data.</p>
+    <ul>
+      <li><strong>Target Metrics:</strong> Resting Heart Rate (RHR), Heart Rate Variability (HRV), Sleep Stages (Deep/REM), Body Temperature, and Activity Levels.</li>
+      <li><strong>Architecture:</strong> Create a new provider in <code>app/providers/vitals.py</code> to handle OAuth and daily synchronization of time-series data.</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h2>Phase 2: Data Normalization</h2>
+    <p>Ensure all disparate data sources (commits, Leetcode, gym sessions, sleep logs, and new vitals) share a common chronological baseline.</p>
+    <ul>
+      <li>Store vitals in the SQLite DB with strict ISO timestamps.</li>
+      <li>Create daily aggregation views to easily query a specific day's overall "Health Score" vs "Productivity Score".</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h2>Phase 3: The Correlation Engine (AI)</h2>
+    <p>Pass the normalized week-over-week data to an LLM (Claude/GPT-4) with a system prompt designed to find hidden correlations.</p>
+    <ul>
+      <li><strong>Example input to LLM:</strong> "User logged 5 days of low deep work. HRV is down 15%. Sleep duration is normal but REM is low. Gym intensity was high early in the week."</li>
+      <li><strong>Expected output:</strong> "You are showing signs of central nervous system fatigue. Your intense gym sessions early in the week compromised your sleep quality, leading to poor focus. Take 2 rest days."</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h2>Phase 4: Proactive Alerts (UI Integration)</h2>
+    <p>Bring the insights into the UI so they aren't hidden behind menus.</p>
+    <ul>
+      <li>Add a "Jarvis Insight" banner at the top of the Devansh OS web interface that displays the daily AI-generated observation.</li>
+      <li>Integrate with the <code>Neglect</code> panel to warn about impending burnout or illness before it happens.</li>
+    </ul>
+  </div>
+
+  <p class="highlight">Status: Planned for future iterations once hardware tracker is acquired.</p>
+
+</body>
+</html>
