@@ -37,6 +37,9 @@ from .base import DataProvider, register
 # data, never the hue, so the block stays consistent with the others.
 COLOR = "cyan"
 ADHERENCE = "adherence"
+# On the day a ritual comes due, hold its neglect warning until this local hour
+# (so a daily ritual done yesterday isn't nagged at 00:10). See app/neglect.py.
+GRACE_HOUR = 18
 
 
 @register
@@ -46,7 +49,7 @@ class RitualsProvider(DataProvider):
     manual = True  # data comes from /api/rituals/*, never the scheduler
 
     # Declarations are rebuilt from the active bank in refresh_metrics().
-    metrics = [MetricSpec(key=ADHERENCE, label="All", color=COLOR, scale_max=1)]
+    metrics = [MetricSpec(key=ADHERENCE, label="Rituals", color=COLOR, scale_max=1)]
     cards = [CardSpec(metric=ADHERENCE, title="Rituals", show=["last_active"])]
     neglect_rules: list[Rule] = []
 
@@ -64,7 +67,7 @@ class RitualsProvider(DataProvider):
 
         # Composite "All" view: intensity = active rituals logged that day.
         adherence = MetricSpec(
-            key=ADHERENCE, label="All", color=COLOR,
+            key=ADHERENCE, label="Rituals", color=COLOR,
             scale_max=max(len(active), 1), heatmap=True,
         )
         # Per-ritual binary series — off the grid, fetchable behind the dropdown.
@@ -82,6 +85,7 @@ class RitualsProvider(DataProvider):
             Rule(
                 metric=f"r_{r['id']}", kind="days_since", label=r["name"],
                 warn=float(r["interval_days"]), crit=float(r["interval_days"]) * 2,
+                grace_hour=GRACE_HOUR,
             )
             for r in active
         ]
@@ -91,7 +95,7 @@ class RitualsProvider(DataProvider):
         """Drives the in-block dropdown: All + each active ritual. Returns the
         same option list regardless of which metric is currently shown."""
         active = rituals_bank_all(active_only=True)
-        return [{"metric": ADHERENCE, "label": "All"}] + [
+        return [{"metric": ADHERENCE, "label": "Rituals"}] + [
             {"metric": f"r_{r['id']}", "label": r["name"]} for r in active
         ]
 

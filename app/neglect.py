@@ -6,7 +6,10 @@ stays generic: it just iterates the registry.
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 from . import aggregates as agg
+from .config import get_settings
 from .models import Rule, Severity
 from .providers.base import registry
 
@@ -15,6 +18,11 @@ _SEVERITY_ORDER = {"critical": 0, "warning": 1, "info": 2}
 
 def _fmt(v: float) -> str:
     return str(int(v)) if float(v).is_integer() else str(round(v, 1))
+
+
+def _local_hour() -> int:
+    """Current local hour (0–23). Factored out so tests can monkeypatch it."""
+    return datetime.now(get_settings().tz).hour
 
 
 def _eval_days_since(provider_key: str, label: str, rule: Rule) -> dict | None:
@@ -36,6 +44,17 @@ def _eval_days_since(provider_key: str, label: str, rule: Rule) -> dict | None:
     elif rule.warn is not None and n >= rule.warn:
         severity = "warning"
     if severity is None:
+        return None
+    # Due-day grace: on the exact day a ritual comes due (n == warn), hold the
+    # warning until the grace hour — the whole day is still available to do it.
+    # Overdue (n > warn) and critical bands are unaffected and fire at any hour.
+    if (
+        rule.grace_hour is not None
+        and severity == "warning"
+        and rule.warn is not None
+        and n == int(rule.warn)
+        and _local_hour() < rule.grace_hour
+    ):
         return None
     ago = "yesterday" if n == 1 else f"{n} days ago"
     return {

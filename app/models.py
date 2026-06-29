@@ -55,6 +55,9 @@ class Rule:
     threshold: float | None = None # rolling_avg_below: avg below this triggers
     severity: Severity = "warning" # severity for rolling_avg_below
     unit: str = ""
+    # days_since: on the exact due day (n == warn), hold the warning until this
+    # local hour — so a daily ritual done yesterday isn't flagged at 00:10.
+    grace_hour: int | None = None
 
 
 @dataclass
