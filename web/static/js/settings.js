@@ -1,11 +1,19 @@
-// Settings modal — protein target / eating window + protein bank CRUD.
-// Built lazily into the DOM (same pattern as detail.js). Calls onChange() after
-// any save so the dashboard (card pace, heatmap scale) refreshes.
+// Settings modal — tabbed sections (Protein / Rituals / …). A row of tabs sits
+// under the header; only the active tab's content is fetched + rendered, so a
+// large bank never buries the other tabs. Built lazily into the DOM (same pattern
+// as detail.js). Calls onChange() after any save so the dashboard refreshes.
 
 import { api } from "./api.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// Tab registry — single source of truth. Add a tab = append one entry here.
+const TABS = [
+  { id: "protein", label: "Protein", render: renderProteinTab },
+  { id: "rituals", label: "Rituals", render: renderRitualsTab },
+];
+let activeTab = "protein"; // remembered across opens
 
 let overlayEl, panelEl, bodyEl, changed = false, onChangeCb = null;
 
@@ -22,8 +30,16 @@ function ensure() {
       <span class="detail-title">Settings</span>
       <button class="detail-close" aria-label="Close">esc</button>
     </div>
+    <div class="settings-tabs">
+      ${TABS.map((t) =>
+        `<button class="settings-tab" data-tab="${t.id}">${esc(t.label)}</button>`
+      ).join("")}
+    </div>
     <div class="detail-body settings-body"></div>`;
   panelEl.querySelector(".detail-close").addEventListener("click", close);
+
+  panelEl.querySelectorAll(".settings-tab").forEach((btn) =>
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
 
   document.body.appendChild(overlayEl);
   document.body.appendChild(panelEl);
@@ -39,7 +55,7 @@ export async function openSettings({ onChange } = {}) {
   changed = false;
   overlayEl.classList.add("open");
   panelEl.classList.add("open");
-  await render();
+  await renderActive();
 }
 
 function close() {
@@ -49,12 +65,28 @@ function close() {
   if (changed) onChangeCb?.();
 }
 
-async function render() {
+function switchTab(id) {
+  activeTab = id;
+  renderActive();
+}
+
+async function renderActive() {
+  // Reflect the active tab in the tab bar.
+  panelEl.querySelectorAll(".settings-tab").forEach((b) =>
+    b.classList.toggle("active", b.dataset.tab === activeTab));
+
   bodyEl.innerHTML = `<div class="d-empty">Loading…</div>`;
-  let settings, bank, rituals;
+  const tab = TABS.find((t) => t.id === activeTab) || TABS[0];
+  await tab.render();
+}
+
+// ── Protein tab ─────────────────────────────────────────────────────────────
+
+async function renderProteinTab() {
+  let settings, bank;
   try {
-    [settings, { items: bank }, { items: rituals }] = await Promise.all([
-      api.proteinSettings(), api.proteinBank(), api.ritualsBank(),
+    [settings, { items: bank }] = await Promise.all([
+      api.proteinSettings(), api.proteinBank(),
     ]);
   } catch (err) {
     bodyEl.innerHTML = `<div class="d-error">Failed to load: ${esc(err.message)}</div>`;
@@ -71,6 +103,78 @@ async function render() {
         <button class="btn-link st-del" title="delete">del</button>
       </td>
     </tr>`).join("");
+
+  bodyEl.innerHTML = `
+    <section class="d-section">
+      <h4 class="d-heading">Protein target & eating window</h4>
+      <div class="st-grid">
+        <label class="st-field"><span>Daily target (g)</span>
+          <input id="st-target" class="st-in" type="number" min="1" step="5" value="${settings.target_g}" /></label>
+        <label class="st-field"><span>Window start (h)</span>
+          <input id="st-ws" class="st-in" type="number" min="0" max="23" value="${settings.window_start}" /></label>
+        <label class="st-field"><span>Window end (h)</span>
+          <input id="st-we" class="st-in" type="number" min="1" max="24" value="${settings.window_end}" /></label>
+      </div>
+      <button id="st-save-settings" class="btn">save target & window</button>
+      <p class="st-note">Pace ramps across the window — before ${settings.window_start}:00 expected = 0, after ${settings.window_end}:00 expected = target.</p>
+    </section>
+
+    <section class="d-section">
+      <h4 class="d-heading">Protein bank</h4>
+      <table class="st-table">
+        <thead><tr><th>Food</th><th>g</th><th>Serving</th><th></th></tr></thead>
+        <tbody id="st-bank">${rows}</tbody>
+      </table>
+      <div class="st-add-row">
+        <input id="st-new-name" class="st-in" placeholder="name" />
+        <input id="st-new-g" class="st-in" type="number" min="0" step="1" placeholder="g" />
+        <input id="st-new-serv" class="st-in" placeholder="serving (opt.)" />
+        <button id="st-add" class="btn">add</button>
+      </div>
+    </section>`;
+
+  // ── wire settings save ──
+  bodyEl.querySelector("#st-save-settings").addEventListener("click", async (e) => {
+    const body = {
+      target_g: parseFloat(bodyEl.querySelector("#st-target").value),
+      window_start: parseInt(bodyEl.querySelector("#st-ws").value, 10),
+      window_end: parseInt(bodyEl.querySelector("#st-we").value, 10),
+    };
+    await guard(e.target, api.proteinSettingsSave(body));
+  });
+
+  // ── wire bank row save/delete ──
+  bodyEl.querySelectorAll("#st-bank tr").forEach((tr) => {
+    const id = Number(tr.dataset.id);
+    tr.querySelector(".st-save").addEventListener("click", (e) =>
+      guard(e.target, api.proteinBankUpdate(id, readRow(tr))));
+    tr.querySelector(".st-del").addEventListener("click", async (e) => {
+      await guard(e.target, api.proteinBankDelete(id));
+      renderActive();
+    });
+  });
+
+  // ── wire add ──
+  bodyEl.querySelector("#st-add").addEventListener("click", async (e) => {
+    const name = bodyEl.querySelector("#st-new-name").value.trim();
+    const g = parseFloat(bodyEl.querySelector("#st-new-g").value);
+    if (!name || !g || g <= 0) return;
+    const serving_label = bodyEl.querySelector("#st-new-serv").value.trim() || null;
+    await guard(e.target, api.proteinBankAdd({ name, protein_g: g, serving_label }));
+    renderActive();
+  });
+}
+
+// ── Rituals tab ─────────────────────────────────────────────────────────────
+
+async function renderRitualsTab() {
+  let rituals;
+  try {
+    ({ items: rituals } = await api.ritualsBank());
+  } catch (err) {
+    bodyEl.innerHTML = `<div class="d-error">Failed to load: ${esc(err.message)}</div>`;
+    return;
+  }
 
   // "Every" cadence as a clear 1–7 day dropdown (keeps any out-of-range legacy value).
   const everyOptions = (val) => {
@@ -102,34 +206,6 @@ async function render() {
 
   bodyEl.innerHTML = `
     <section class="d-section">
-      <h4 class="d-heading">Protein target & eating window</h4>
-      <div class="st-grid">
-        <label class="st-field"><span>Daily target (g)</span>
-          <input id="st-target" class="st-in" type="number" min="1" step="5" value="${settings.target_g}" /></label>
-        <label class="st-field"><span>Window start (h)</span>
-          <input id="st-ws" class="st-in" type="number" min="0" max="23" value="${settings.window_start}" /></label>
-        <label class="st-field"><span>Window end (h)</span>
-          <input id="st-we" class="st-in" type="number" min="1" max="24" value="${settings.window_end}" /></label>
-      </div>
-      <button id="st-save-settings" class="btn">save target & window</button>
-      <p class="st-note">Pace ramps across the window — before ${settings.window_start}:00 expected = 0, after ${settings.window_end}:00 expected = target.</p>
-    </section>
-
-    <section class="d-section">
-      <h4 class="d-heading">Protein bank</h4>
-      <table class="st-table">
-        <thead><tr><th>Food</th><th>g</th><th>Serving</th><th></th></tr></thead>
-        <tbody id="st-bank">${rows}</tbody>
-      </table>
-      <div class="st-add-row">
-        <input id="st-new-name" class="st-in" placeholder="name" />
-        <input id="st-new-g" class="st-in" type="number" min="0" step="1" placeholder="g" />
-        <input id="st-new-serv" class="st-in" placeholder="serving (opt.)" />
-        <button id="st-add" class="btn">add</button>
-      </div>
-    </section>
-
-    <section class="d-section">
       <h4 class="d-heading">Rituals</h4>
       <table class="st-table rk-table">
         <thead><tr><th>Ritual</th><th class="rk-col-on">On</th><th class="rk-col-every">Every</th><th>Dose</th><th></th></tr></thead>
@@ -147,37 +223,6 @@ async function render() {
       <p class="st-note">"Every" is the cadence in days (1 = daily). Only active rituals count toward neglect, the heatmap and inputs — deactivating keeps history.</p>
     </section>`;
 
-  // ── wire settings save ──
-  bodyEl.querySelector("#st-save-settings").addEventListener("click", async (e) => {
-    const body = {
-      target_g: parseFloat(bodyEl.querySelector("#st-target").value),
-      window_start: parseInt(bodyEl.querySelector("#st-ws").value, 10),
-      window_end: parseInt(bodyEl.querySelector("#st-we").value, 10),
-    };
-    await guard(e.target, api.proteinSettingsSave(body));
-  });
-
-  // ── wire bank row save/delete ──
-  bodyEl.querySelectorAll("#st-bank tr").forEach((tr) => {
-    const id = Number(tr.dataset.id);
-    tr.querySelector(".st-save").addEventListener("click", (e) =>
-      guard(e.target, api.proteinBankUpdate(id, readRow(tr))));
-    tr.querySelector(".st-del").addEventListener("click", async (e) => {
-      await guard(e.target, api.proteinBankDelete(id));
-      render();
-    });
-  });
-
-  // ── wire add ──
-  bodyEl.querySelector("#st-add").addEventListener("click", async (e) => {
-    const name = bodyEl.querySelector("#st-new-name").value.trim();
-    const g = parseFloat(bodyEl.querySelector("#st-new-g").value);
-    if (!name || !g || g <= 0) return;
-    const serving_label = bodyEl.querySelector("#st-new-serv").value.trim() || null;
-    await guard(e.target, api.proteinBankAdd({ name, protein_g: g, serving_label }));
-    render();
-  });
-
   // ── wire rituals bank row save/delete (skip the empty-state placeholder row) ──
   bodyEl.querySelectorAll("#rk-bank tr[data-id]").forEach((tr) => {
     const id = Number(tr.dataset.id);
@@ -185,7 +230,7 @@ async function render() {
       guard(e.target, api.ritualsBankUpdate(id, readRitualRow(tr))));
     tr.querySelector(".rk-del").addEventListener("click", async (e) => {
       await guard(e.target, api.ritualsBankDelete(id));
-      render();
+      renderActive();
     });
   });
 
@@ -196,9 +241,11 @@ async function render() {
     const interval_days = parseInt(bodyEl.querySelector("#rk-new-int").value, 10) || 1;
     const dose_label = bodyEl.querySelector("#rk-new-dose").value.trim() || null;
     await guard(e.target, api.ritualsBankAdd({ name, interval_days, dose_label, active: true }));
-    render();
+    renderActive();
   });
 }
+
+// ── Shared helpers ──────────────────────────────────────────────────────────
 
 function readRitualRow(tr) {
   return {
