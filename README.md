@@ -26,6 +26,26 @@ the dashboard leads with *"last solved: 2 days ago"*, not *"427 solved"*.
 └──────────────────────────────────────────────────────────────────────────────── ┘
 ```
 
+## Core philosophy: no kill switch
+
+**The data never lies, and it is never allowed to.** There is no rest mode, no
+weekend mode, no vacation mode, no pause button — and there never will be. If you
+haven't been to the gym, the gym goes neglected. If you haven't shipped, it shows.
+Being sick, on vacation, or "taking a well-earned break" buys you nothing here:
+the day still counts, `days_since` still climbs, and the neglect banner still
+says so.
+
+This is a deliberate, load-bearing decision, not a missing feature. A single
+toggle that silences the truth is a one-click self-deception button — and the
+moment the board stops being honest, it stops being worth opening. The honesty
+*is* the product. So:
+
+> **No excuses. No concessions. No exceptions.** The observatory reports what
+> happened, not what you wish had happened. What you do with that is up to you —
+> but it will always be the truth.
+
+If a stretch of red bothers you, the only intended fix is to go do the thing.
+
 ## Architecture
 
 A FastAPI backend with a **plug-and-play provider architecture**. Every data
