@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neglect Detection — How It Works</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0a0c0f;
+      color: #c9d1dc;
+      line-height: 1.6;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    h1, h2, h3 { color: #eef2f7; }
+    h1 { border-bottom: 2px solid #1f242d; padding-bottom: 10px; }
+    h2 { color: #4391d6; margin-top: 2.4em; }
+    h3 { color: #8aa0bd; margin-top: 1.8em; }
+    a { color: #4391d6; }
+    code { background: #161a21; padding: 2px 6px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #d0a83e; font-size: 0.92em; }
+    pre { background: #11141a; border: 1px solid #1f242d; border-radius: 8px; padding: 16px; overflow-x: auto; }
+    pre code { background: none; padding: 0; color: #c9d1dc; }
+    .card { background: #11141a; border: 1px solid #1f242d; border-radius: 8px; padding: 20px 24px; margin-bottom: 20px; }
+    .lead { font-size: 1.08em; color: #aebacb; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.94em; }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #1f242d; vertical-align: top; }
+    th { color: #8aa0bd; font-weight: 600; }
+    td code { white-space: nowrap; }
+    .sev { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 0.82em; font-weight: 700; }
+    .sev-crit { background: rgba(214, 70, 70, 0.16); color: #e06b6b; }
+    .sev-warn { background: rgba(208, 168, 62, 0.16); color: #d0a83e; }
+    .sev-info { background: rgba(67, 145, 214, 0.16); color: #4391d6; }
+    .sev-ok   { background: rgba(63, 154, 90, 0.16); color: #3f9a5a; }
+    .muted { color: #6b7686; }
+    .note { border-left: 3px solid #4391d6; padding: 6px 0 6px 16px; margin: 18px 0; color: #aebacb; }
+    .file { color: #6b7686; font-size: 0.85em; }
+    ul { padding-left: 22px; }
+    li { margin: 5px 0; }
+    .pipeline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 4px; }
+    .pipeline .step { background: #161a21; border: 1px solid #1f242d; border-radius: 6px; padding: 6px 12px; font-size: 0.88em; }
+    .pipeline .arrow { color: #4391d6; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+  <h1>Neglect Detection</h1>
+  <p class="lead">The headline feature of Devansh OS. It continuously asks one question across every tracked system in your life — <em>"What am I letting slip?"</em> — and surfaces the answer, worst-first, as a banner at the top of the dashboard.</p>
+
+  <div class="card">
+    <strong>One-line summary:</strong> a generic engine walks every enabled provider, evaluates the neglect rules that provider declares against your daily metric history, and returns a severity-sorted list of warnings. Providers own <em>what</em> counts as neglect; the engine only knows <em>how</em> to measure it.
+  </div>
+
+  <h2>The core idea: recency over scores</h2>
+  <p>Devansh OS is built around <strong>systems, not scores</strong>. It doesn't grade you on totals; it watches for <em>silence</em>. A streak you stopped defending, a deploy that hasn't shipped, an average that quietly drifted below a healthy floor — those are the failure modes the engine is tuned to catch. Everything below is in service of detecting that silence reliably and ranking it by how much it should worry you.</p>
+
+  <h2>Architecture at a glance</h2>
+  <div class="pipeline">
+    <span class="step">Providers declare <code>neglect_rules</code></span>
+    <span class="arrow">→</span>
+    <span class="step"><code>neglect.evaluate()</code></span>
+    <span class="arrow">→</span>
+    <span class="step"><code>aggregates</code> over <code>metric_daily</code></span>
+    <span class="arrow">→</span>
+    <span class="step"><code>/api/neglect</code></span>
+    <span class="arrow">→</span>
+    <span class="step">banner (<code>neglect.js</code>)</span>
+  </div>
+  <p>The design deliberately keeps the engine generic. A new data source becomes neglect-aware by adding a single <code>Rule</code> to its provider class — no changes to the engine, the API, or the frontend.</p>
+
+  <table>
+    <tr><th>Concern</th><th>Where it lives</th></tr>
+    <tr><td>Rule schema (the contract)</td><td><code>app/models.py</code> &middot; <code>Rule</code> dataclass</td></tr>
+    <tr><td>Each provider's rules</td><td><code>app/providers/*.py</code> &middot; <code>neglect_rules</code></td></tr>
+    <tr><td>Measurement primitives</td><td><code>app/aggregates.py</code></td></tr>
+    <tr><td>Evaluation engine</td><td><code>app/neglect.py</code></td></tr>
+    <tr><td>HTTP surface</td><td><code>app/api/neglect.py</code> &middot; <code>GET /api/neglect</code></td></tr>
+    <tr><td>Rendering</td><td><code>web/static/js/neglect.js</code></td></tr>
+  </table>
+
+  <h2>The rule contract</h2>
+  <p>A <code>Rule</code> is a static declaration owned by the provider that knows the metric. <span class="file">app/models.py</span></p>
+  <pre><code>@dataclass
+class Rule:
+    metric: str                    # which metric to watch, e.g. "commits"
+    kind: Literal["days_since", "rolling_avg_below"]
+    label: str                     # human label shown in the banner ("Gym")
+    warn: float | None = None      # days_since: warn threshold (days)
+    crit: float | None = None      # days_since: critical threshold (days)
+    window: int | None = None      # rolling_avg_below: window in days
+    threshold: float | None = None # rolling_avg_below: avg below this triggers
+    severity: Severity = "warning" # severity for rolling_avg_below
+    unit: str = ""</code></pre>
+  <p>There are exactly two ways the engine knows how to measure neglect, captured by <code>kind</code>.</p>
+
+  <h2>How neglect is measured</h2>
+
+  <h3>1. <code>days_since</code> — defending a streak</h3>
+  <p>The dominant rule type. It answers <em>"how long since I last did this?"</em> and escalates as the gap widens. <span class="file">app/neglect.py &middot; _eval_days_since</span></p>
+  <p>The measurement comes from <code>aggregates.days_since()</code>, which builds on <code>last_active_day()</code>:</p>
+  <ul>
+    <li>It pulls the metric's daily series for roughly the last year (<code>series_for_year</code> &rarr; a 370-day window).</li>
+    <li>The <strong>last active day</strong> is the most recent day with a <em>positive</em> value (<code>value &gt; 0</code>). Zero or missing days don't count as activity.</li>
+    <li><code>days_since = today − last_active_day</code>, in whole calendar days (timezone-aware, via the configured <code>tz</code>).</li>
+  </ul>
+  <p>The engine then maps that integer to a severity:</p>
+  <table>
+    <tr><th>Condition</th><th>Result</th></tr>
+    <tr><td><code>days_since is None</code> (metric never recorded)</td><td><span class="sev sev-info">info</span> — <span class="muted">"…: no activity recorded yet"</span>, flagged once so the system still surfaces</td></tr>
+    <tr><td><code>days_since == 0</code> (active today)</td><td>no warning — suppressed entirely</td></tr>
+    <tr><td><code>days_since &ge; crit</code></td><td><span class="sev sev-crit">critical</span></td></tr>
+    <tr><td><code>days_since &ge; warn</code> (but below crit)</td><td><span class="sev sev-warn">warning</span></td></tr>
+    <tr><td>otherwise (within tolerance)</td><td>no warning</td></tr>
+  </table>
+  <p>The message is humanized: <code>1</code> day reads "yesterday", anything more reads "<em>N</em> days ago" — e.g. <span class="muted">"Gym: last activity 4 days ago"</span>. The <code>value</code> carried alongside is the raw day count, which also drives tie-breaking in the sort.</p>
+  <div class="note">Note the asymmetry: a metric that was <strong>never</strong> recorded is only <em>info</em>, not critical. The engine treats "you've never tracked this" as a setup gap to surface gently, while "you tracked this and then stopped" is the real neglect signal that escalates.</div>
+
+  <h3>2. <code>rolling_avg_below</code> — guarding a floor</h3>
+  <p>For metrics where the concern isn't <em>"did I do it recently"</em> but <em>"is the sustained level healthy"</em> — sleep being the canonical case. <span class="file">app/neglect.py &middot; _eval_rolling_avg</span></p>
+  <p>It uses <code>aggregates.rolling_avg(provider, metric, window)</code>, which is deliberately different from the streak math:</p>
+  <pre><code>def rolling_avg(provider, metric, window):
+    s = window_series(provider, metric, window)
+    total = sum(s.values())
+    return round(total / window, 2)   # divides by the FULL window</code></pre>
+  <p>Crucially it divides by the <strong>entire window</strong>, including zero and missing days — so skipped days drag the average down rather than being ignored. (Contrast <code>day_avg</code>, used by cards, which averages only active days.) If the resulting average is below <code>threshold</code>, a warning is emitted at the rule's declared <code>severity</code>, with a message like <span class="muted">"Sleep: 7-day average 5.4h (below 6h)"</span>.</p>
+
+  <h2>The evaluation loop</h2>
+  <p><code>evaluate()</code> is the whole engine. It is intentionally tiny and provider-agnostic: <span class="file">app/neglect.py</span></p>
+  <pre><code>def evaluate() -> list[dict]:
+    warnings = []
+    for provider in registry.enabled():        # only enabled providers
+        for rule in provider.neglect_rules:     # each declared rule
+            if rule.kind == "days_since":
+                w = _eval_days_since(provider.key, rule.label, rule)
+            elif rule.kind == "rolling_avg_below":
+                w = _eval_rolling_avg(provider.key, rule.label, rule)
+            else:
+                w = None
+            if w:
+                warnings.append(w)
+    warnings.sort(key=lambda w: (
+        _SEVERITY_ORDER.get(w["severity"], 9),
+        -(w["value"] or 0) if isinstance(w["value"], (int, float)) else 0))
+    return warnings</code></pre>
+  <ul>
+    <li><strong>Only enabled providers are evaluated.</strong> <code>registry.enabled()</code> filters out providers that lack their requirements (missing credentials, a disabled data source). A provider whose <code>enabled()</code> returns <code>False</code> — e.g. Sleep and ChemVecto, which are awaiting Phase 2 data sources — contributes no warnings at all.</li>
+    <li><strong>Each warning is a plain dict</strong>: <code>provider</code>, <code>label</code>, <code>severity</code>, <code>message</code>, <code>value</code>. That keeps it trivially JSON-serializable for the API.</li>
+  </ul>
+
+  <h3>Sort order: worst-first</h3>
+  <p>The list is sorted by a two-key tuple:</p>
+  <ol>
+    <li><strong>Severity</strong>, using <code>_SEVERITY_ORDER = {critical: 0, warning: 1, info: 2}</code> — critical floats to the top.</li>
+    <li><strong>Within a severity, by <code>value</code> descending</strong> (the <code>-(value)</code>). For <code>days_since</code> rules this means the longest-neglected item leads; the thing you've ignored for 9 days outranks the one you've ignored for 4.</li>
+  </ol>
+  <p>This ordering <em>is</em> the product: the most urgent neglect is always the first thing you read.</p>
+
+  <h2>The HTTP surface</h2>
+  <p><code>GET /api/neglect</code> wraps <code>evaluate()</code> and adds the summary the banner needs. <span class="file">app/api/neglect.py</span></p>
+  <pre><code>{
+  "warnings": [ { provider, label, severity, message, value }, ... ],
+  "counts":   { "critical": 1, "warning": 2, "info": 0 },
+  "worst":    "critical"   // critical &gt; warning &gt; info &gt; "ok"
+}</code></pre>
+  <p><code>counts</code> tallies each severity; <code>worst</code> collapses the whole system into a single status, falling through <code>critical → warning → info → "ok"</code>. When nothing fires, <code>worst</code> is <code>"ok"</code> and <code>warnings</code> is empty.</p>
+
+  <h2>How it renders</h2>
+  <p>The banner (<span class="file">web/static/js/neglect.js</span>) reflects the engine's output directly:</p>
+  <ul>
+    <li>The header shows the count chips (<span class="sev sev-crit">N critical</span> <span class="sev sev-warn">N warning</span> <span class="sev sev-info">N info</span>) and, when clear, <span class="sev sev-ok">all systems active</span>.</li>
+    <li><code>container.dataset.worst</code> is set to <code>data.worst</code>, so CSS can color the whole banner by overall status.</li>
+    <li>Each warning becomes a clickable row with a severity icon (<code>✕ / ! / i</code>) and the message; clicking calls back with the <code>provider</code> key to open that system's drill-down.</li>
+    <li>Empty state: <span class="muted">"Nothing neglected — every tracked system has recent activity."</span></li>
+  </ul>
+
+  <h2>The rules in play today</h2>
+  <p>Every rule currently declared across the providers. Disabled providers are evaluated only once their data source is wired in.</p>
+  <table>
+    <tr><th>System</th><th>Metric</th><th>Kind</th><th>Thresholds</th><th>Status</th></tr>
+    <tr><td>LeetCode</td><td><code>solved</code></td><td>days_since</td><td>warn 2 / crit 4 days</td><td>enabled w/ username</td></tr>
+    <tr><td>GitHub</td><td><code>commits</code></td><td>days_since</td><td>warn 3 / crit 5 days</td><td>enabled w/ token</td></tr>
+    <tr><td>Gym</td><td><code>workout</code></td><td>days_since</td><td>warn 3 / crit 6 days</td><td>enabled</td></tr>
+    <tr><td>Claude</td><td><code>hours</code></td><td>days_since</td><td>warn 4 / crit 7 days</td><td>enabled w/ dir</td></tr>
+    <tr><td>ChemVecto</td><td><code>deployments</code></td><td>days_since</td><td>warn 7 / crit 10 days</td><td><span class="muted">disabled (Phase 2)</span></td></tr>
+    <tr><td>Sleep</td><td><code>hours</code></td><td>rolling_avg_below</td><td>7-day avg below 6.0h → warning</td><td><span class="muted">disabled (Phase 2)</span></td></tr>
+    <tr><td>Protein</td><td>—</td><td>—</td><td>no rules ("eating protein isn't a streak to defend")</td><td>enabled</td></tr>
+    <tr><td>Rituals</td><td><code>r_&lt;id&gt;</code></td><td>days_since</td><td><em>dynamic</em> — see below</td><td>enabled</td></tr>
+  </table>
+
+  <h3>Rituals: rules generated at runtime</h3>
+  <p>The Rituals provider is the one place rules aren't a static list. <code>refresh_metrics()</code> rebuilds <code>neglect_rules</code> from the active ritual bank whenever a ritual is added, edited, or removed, so the engine stays in sync. <span class="file">app/providers/rituals.py</span></p>
+  <pre><code>self.neglect_rules = [
+    Rule(metric=f"r_{r['id']}", kind="days_since", label=r["name"],
+         warn=float(r["interval_days"]),
+         crit=float(r["interval_days"]) * 2)
+    for r in active
+]</code></pre>
+  <p>Each ritual derives its own thresholds from its <code>interval_days</code>: you get a <span class="sev sev-warn">warning</span> as soon as you're past the cadence you set, and it escalates to <span class="sev sev-crit">critical</span> at twice that interval. A ritual you intend to do weekly warns at 7 days and goes critical at 14.</p>
+
+  <h2>End-to-end example</h2>
+  <p>Suppose today is a day where you last committed 6 days ago, last hit the gym 4 days ago, and have never connected LeetCode:</p>
+  <ol>
+    <li>GitHub's <code>commits</code> rule: <code>days_since = 6 ≥ crit (5)</code> → <span class="sev sev-crit">critical</span>, value 6.</li>
+    <li>Gym's <code>workout</code> rule: <code>days_since = 4</code>, which is <code>≥ warn (3)</code> but <code>&lt; crit (6)</code> → <span class="sev sev-warn">warning</span>, value 4.</li>
+    <li>LeetCode's <code>solved</code> rule: never recorded → <span class="sev sev-info">info</span>, "no activity recorded yet".</li>
+  </ol>
+  <p>After the sort (severity, then value desc), the banner reads:</p>
+  <pre><code>2 critical?  no — counts: { critical: 1, warning: 1, info: 1 }, worst: "critical"
+
+✕  GitHub: last activity 6 days ago
+!  Gym: last activity 4 days ago
+i  LeetCode: no activity recorded yet</code></pre>
+
+  <h2>Design notes &amp; edge cases worth knowing</h2>
+  <ul>
+    <li><strong>"Active" means positive.</strong> A logged <code>0</code> is treated as inactivity for <code>days_since</code> — only <code>value &gt; 0</code> resets a streak.</li>
+    <li><strong>The lookback is ~1 year.</strong> <code>last_active_day</code> searches a 370-day window; activity older than that reads as "never recorded" (<em>info</em>). In practice this only matters for systems untouched for a year.</li>
+    <li><strong>Same-day activity silences the alert.</strong> <code>days_since == 0</code> returns no warning, so doing the thing today immediately clears it.</li>
+    <li><strong>Missing days hurt the average.</strong> <code>rolling_avg_below</code> divides by the full window, so a week with skipped nights pulls the sleep average down — by design.</li>
+    <li><strong>Enabled-gating is the safety valve.</strong> Providers without a data source (Sleep, ChemVecto) declare rules but stay silent until enabled, so the banner never nags about systems you haven't wired up.</li>
+    <li><strong>The engine never crashes the dashboard.</strong> It only reads pre-aggregated <code>metric_daily</code> data; the heavy lifting (and any failure isolation) happens earlier, during each provider's <code>sync()</code>.</li>
+  </ul>
+
+  <p class="muted" style="margin-top:3em; border-top:1px solid #1f242d; padding-top:14px;">Generated audit of the neglect-detection feature &middot; sources: <code>app/neglect.py</code>, <code>app/aggregates.py</code>, <code>app/models.py</code>, <code>app/api/neglect.py</code>, <code>app/providers/*.py</code>, <code>web/static/js/neglect.js</code>.</p>
+
+</body>
+</html>
