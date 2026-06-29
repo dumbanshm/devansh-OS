@@ -50,6 +50,9 @@ def heatmap(provider_key: str, metric: str, range: str = "year"):
         "current_streak": agg.current_streak(provider_key, metric),
         "longest_streak": agg.longest_streak(provider_key, metric),
         "last_active": agg.last_active_day(provider_key, metric),
+        # Optional in-block dropdown (e.g. Rituals: All + each active ritual).
+        # Providers without variants return None → the block renders unchanged.
+        "variants": getattr(provider, "heatmap_variants", lambda *_: None)(metric),
     }
 
 

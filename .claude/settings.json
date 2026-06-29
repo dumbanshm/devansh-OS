@@ -23,7 +23,18 @@
       "Bash(lsof -nP -iTCP:8770 -sTCP:LISTEN -t)",
       "Bash(lsof -nP -iTCP:8770 -sTCP:LISTEN)",
       "Bash(curl -s -o /dev/null -w \"http %{http_code}\\\\n\" http://127.0.0.1:8770/api/summary)",
-      "Bash(curl -s \"http://127.0.0.1:8770/api/timeline?days=3\")"
+      "Bash(curl -s \"http://127.0.0.1:8770/api/timeline?days=3\")",
+      "Bash(lsof -iTCP:8770 -sTCP:LISTEN -n)",
+      "Bash(ps -p 19711 -o command=)",
+      "Bash(lsof -tiTCP:8770 -sTCP:LISTEN)",
+      "Bash(curl -fsS \"http://127.0.0.1:8770/healthz\")",
+      "Bash(break)",
+      "Bash(curl -fsS \"http://127.0.0.1:8770/api/heatmaps\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\([h for h in d['heatmaps'] if h['provider']=='rituals']\\)\")",
+      "Bash(curl -fsS \"http://127.0.0.1:8770/\")",
+      "Bash(curl -fsS \"http://127.0.0.1:8770/static/js/settings.js\")",
+      "Bash(curl -fsS -X POST \"http://127.0.0.1:8770/api/rituals/bank\" -H \"Content-Type: application/json\" -d '{\"name\":\"__probe\",\"interval_days\":1,\"dose_label\":null,\"active\":true}')",
+      "Bash(curl -fsS \"http://127.0.0.1:8770/api/rituals/bank\")"
     ]
   }
 }

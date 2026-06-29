@@ -24,20 +24,37 @@ function fmt(v) {
 }
 
 // data: { label, color, unit, scale_max, range, cells:[{day,value}],
-//         current_streak, longest_streak, last_active }
-export function renderHeatmap(container, data, { onCellClick } = {}) {
+//         current_streak, longest_streak, last_active, variants? }
+// variants (optional): [{ metric, label }] — when present, the title becomes an
+// in-block dropdown that swaps which series is shown (onVariantChange fires with
+// the chosen metric). Blocks without variants render exactly as before.
+export function renderHeatmap(container, data, { onCellClick, onVariantChange } = {}) {
   container.innerHTML = "";
   container.classList.add("heatmap");
+
+  const variants = data.variants && data.variants.length ? data.variants : null;
+  const title = variants
+    ? `<select class="hm-select" aria-label="Choose ritual">
+         ${variants.map((v) =>
+           `<option value="${v.metric}"${v.metric === data.metric ? " selected" : ""}>${v.label}</option>`
+         ).join("")}
+       </select>`
+    : `<div class="hm-title">${data.label}</div>`;
 
   const head = document.createElement("div");
   head.className = "hm-head";
   head.innerHTML = `
-    <div class="hm-title">${data.label}</div>
+    ${title}
     <div class="hm-streaks">
       <span title="Current streak">▲ ${data.current_streak}d</span>
       <span class="hm-dim" title="Longest streak">max ${data.longest_streak}d</span>
     </div>`;
   container.appendChild(head);
+
+  if (variants && onVariantChange) {
+    head.querySelector(".hm-select").addEventListener("change", (e) =>
+      onVariantChange(e.target.value));
+  }
 
   const cells = data.cells;
   if (!cells.length) {

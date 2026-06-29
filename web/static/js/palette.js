@@ -11,6 +11,7 @@ export const RAMPS = {
   rose:   ["#241318", "#3e1c25", "#6b2c3a", "#9a3d52", "#cf5772"], // chemvecto
   indigo: ["#15162a", "#21244a", "#333a78", "#4b54a8", "#6b76d0"], // claude
   orange: ["#231a12", "#3a2a14", "#6b4a1e", "#9a6c2c", "#d09340"], // protein
+  cyan:   ["#0e1f24", "#143842", "#1d5e6e", "#268799", "#34b3c8"], // rituals
   slate:  ["#181b21", "#262b34", "#3a4150", "#525c6e", "#6f7a8c"], // fallback
 };
 

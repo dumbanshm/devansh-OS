@@ -258,3 +258,81 @@ def protein_log_delete(entry_id: int) -> str | None:
             return None
         conn.execute("DELETE FROM protein_log WHERE id=?", (entry_id,))
         return row["day"]
+
+
+# ── Rituals bank + log ──────────────────────────────────────────────────────
+
+def rituals_bank_all(active_only: bool = False) -> list[sqlite3.Row]:
+    sql = "SELECT * FROM rituals_bank"
+    if active_only:
+        sql += " WHERE active=1"
+    sql += " ORDER BY sort_order, name COLLATE NOCASE"
+    return query(sql)
+
+
+def rituals_bank_get(ritual_id: int) -> sqlite3.Row | None:
+    return query_one("SELECT * FROM rituals_bank WHERE id=?", (ritual_id,))
+
+
+def rituals_bank_add(
+    name: str, interval_days: int = 1, dose_label: str | None = None, active: bool = True
+) -> int:
+    with connect() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO rituals_bank (name, active, interval_days, dose_label)
+            VALUES (?, ?, ?, ?)
+            """,
+            (name, 1 if active else 0, int(interval_days), dose_label),
+        )
+        return int(cur.lastrowid)
+
+
+def rituals_bank_update(
+    ritual_id: int, name: str, interval_days: int, dose_label: str | None, active: bool
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            """
+            UPDATE rituals_bank
+            SET name=?, interval_days=?, dose_label=?, active=?
+            WHERE id=?
+            """,
+            (name, int(interval_days), dose_label, 1 if active else 0, ritual_id),
+        )
+
+
+def rituals_bank_delete(ritual_id: int) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM rituals_bank WHERE id=?", (ritual_id,))
+
+
+def rituals_done(day: str) -> set[int]:
+    """ritual_ids logged (done) on a given day."""
+    rows = query(
+        "SELECT ritual_id FROM rituals_log WHERE day=? AND ritual_id IS NOT NULL", (day,)
+    )
+    return {r["ritual_id"] for r in rows}
+
+
+def rituals_entries(day: str) -> list[sqlite3.Row]:
+    return query("SELECT * FROM rituals_log WHERE day=? ORDER BY logged_at", (day,))
+
+
+def rituals_log_add(ritual_id: int, ritual_name: str, day: str) -> None:
+    """Mark a ritual done for a day (idempotent — UNIQUE(day, ritual_id))."""
+    with connect() as conn:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO rituals_log (day, ritual_id, ritual_name, logged_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (day, ritual_id, ritual_name, _now_iso()),
+        )
+
+
+def rituals_log_remove(ritual_id: int, day: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "DELETE FROM rituals_log WHERE day=? AND ritual_id=?", (day, ritual_id)
+        )

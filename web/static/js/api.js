@@ -41,4 +41,13 @@ export const api = {
   proteinBankDelete: (id) => http("DELETE", `/api/protein/bank/${id}`),
   proteinSettings: () => http("GET", "/api/settings/protein"),
   proteinSettingsSave: (s) => http("PUT", "/api/settings/protein", s),
+
+  // Rituals
+  ritualsDay: (day) =>
+    http("GET", `/api/rituals/day${day ? `?day=${day}` : ""}`),
+  ritualsToggle: (body) => http("POST", "/api/rituals/toggle", body),
+  ritualsBank: () => http("GET", "/api/rituals/bank"),
+  ritualsBankAdd: (item) => http("POST", "/api/rituals/bank", item),
+  ritualsBankUpdate: (id, item) => http("PUT", `/api/rituals/bank/${id}`, item),
+  ritualsBankDelete: (id) => http("DELETE", `/api/rituals/bank/${id}`),
 };

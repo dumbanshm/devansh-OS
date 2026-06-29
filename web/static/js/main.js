@@ -8,6 +8,7 @@ import { renderNeglect } from "./neglect.js";
 import { renderTimeline } from "./timeline.js";
 import { openDetail } from "./detail.js";
 import { openProtein } from "./protein.js";
+import { openRituals } from "./rituals.js";
 import { openSettings } from "./settings.js";
 import { accent } from "./palette.js";
 import { initSpatialNav } from "./spatial_nav.js";
@@ -47,6 +48,20 @@ async function loadCards() {
   });
 }
 
+// Fetch + render one heatmap into its card. For blocks with variants (Rituals),
+// switching the dropdown re-draws the same card with the chosen series.
+async function drawHeatmapCard(cell, provider, metric, label) {
+  try {
+    const data = await api.heatmap(provider, metric, heatmapRange);
+    renderHeatmap(cell, data, {
+      onCellClick: (day) => openDetail(provider, day),
+      onVariantChange: (newMetric) => drawHeatmapCard(cell, provider, newMetric, label),
+    });
+  } catch (err) {
+    cell.innerHTML = `<div class="hm-error">${label}: ${err.message}</div>`;
+  }
+}
+
 async function loadHeatmaps() {
   const { heatmaps } = await api.heatmaps();
   const wrap = $("#heatmaps");
@@ -54,18 +69,11 @@ async function loadHeatmaps() {
   // Short ranges are narrow, so pack two per row instead of letting cells balloon.
   wrap.classList.toggle("heatmaps-grid--cols", heatmapRange !== "year");
   await Promise.all(
-    heatmaps.map(async (h) => {
+    heatmaps.map((h) => {
       const cell = document.createElement("div");
       cell.className = "heatmap-card";
       wrap.appendChild(cell);
-      try {
-        const data = await api.heatmap(h.provider, h.metric, heatmapRange);
-        renderHeatmap(cell, data, {
-          onCellClick: (day) => openDetail(h.provider, day),
-        });
-      } catch (err) {
-        cell.innerHTML = `<div class="hm-error">${h.label}: ${err.message}</div>`;
-      }
+      return drawHeatmapCard(cell, h.provider, h.metric, h.label);
     })
   );
 }
@@ -79,6 +87,12 @@ async function loadTimeline() {
 // and the header chips, but not the whole board.
 async function onProteinChange() {
   await Promise.allSettled([loadHeader(), loadCards(), loadHeatmaps()]);
+}
+
+// Toggling a ritual changes a binary cell + adherence → refresh the card, the
+// heatmap block, header chips and neglect (a lapse can clear/appear).
+async function onRitualsChange() {
+  await Promise.allSettled([loadHeader(), loadCards(), loadHeatmaps(), loadNeglect()]);
 }
 
 async function refreshAll() {
@@ -108,6 +122,13 @@ function wireControls() {
       action: () => openProtein({ onChange: onProteinChange })
     },
     {
+      id: "sys.rituals",
+      title: "Log Rituals",
+      category: "Actions",
+      keywords: ["supplement", "creatine", "magnesium", "medicine", "meds", "vitamin", "daily"],
+      action: () => openRituals({ onChange: onRitualsChange })
+    },
+    {
       id: "sys.settings",
       title: "Open Settings",
       category: "Navigation",
@@ -131,6 +152,9 @@ function wireControls() {
 
   $("#protein-btn").addEventListener("click", () =>
     openProtein({ onChange: onProteinChange }));
+
+  $("#rituals-btn").addEventListener("click", () =>
+    openRituals({ onChange: onRitualsChange }));
 
   $("#settings-btn").addEventListener("click", () =>
     openSettings({ onChange: refreshAll }));
