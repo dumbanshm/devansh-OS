@@ -57,6 +57,14 @@ function ensure() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && panelEl.classList.contains("open")) close();
   });
+
+  // Re-fit the grid to the window (debounced) whenever it's open.
+  let rz;
+  window.addEventListener("resize", () => {
+    if (!panelEl.classList.contains("open") || !state?.birth_date) return;
+    clearTimeout(rz);
+    rz = setTimeout(renderGrid, 120);
+  });
 }
 
 export async function openLife() {
@@ -123,48 +131,78 @@ function renderLegend() {
 
 // ── Grid ──────────────────────────────────────────────────────────────────────
 
+const GAP = 3, CELL_MIN = 6, CELL_MAX = 16, AGES_W = 26;
+
+// Choose a column count + cell size so all `total` cells fill the available box
+// (both dimensions) with square cells — instead of a fixed 52-wide strip. The
+// column count is derived from the box's aspect ratio; the cell size is then the
+// largest that fits both width and height (clamped so cells stay small).
+function computeLayout(total) {
+  // bodyEl.client* includes its 20px padding; subtract it, the ages gutter and
+  // the wrap gap so the grid fits without triggering a scrollbar.
+  const W = Math.max(120, bodyEl.clientWidth - 40 - AGES_W - 8);
+  const H = Math.max(120, bodyEl.clientHeight - 40);
+  const aspect = W / H;
+  let cols = Math.round(Math.sqrt(total * aspect));
+  cols = Math.max(26, Math.min(cols, total));
+  const rows = Math.ceil(total / cols);
+  const cell = Math.max(CELL_MIN, Math.min(
+    CELL_MAX,
+    Math.floor(Math.min((W - cols * GAP) / cols, (H - rows * GAP) / rows)),
+  ));
+  return { cols, rows, cell };
+}
+
 function renderGrid() {
-  const { total_weeks, current_week_index, weeks_per_year } = state;
-  const cols = weeks_per_year;
-  const rows = Math.ceil(total_weeks / cols);
+  const { total_weeks, current_week_index } = state;
+  const { cols, rows, cell } = computeLayout(total_weeks);
 
   const wrap = document.createElement("div");
   wrap.className = "life-grid-wrap";
 
   const grid = document.createElement("div");
   grid.className = "life-grid";
-  grid.style.setProperty("--life-cols", cols);
+  grid.style.gridTemplateColumns = `repeat(${cols}, ${cell}px)`;
+  grid.style.setProperty("--life-cell", `${cell}px`);
+  grid.style.setProperty("--life-gap", `${GAP}px`);
 
   const frag = document.createDocumentFragment();
   for (let i = 0; i < total_weeks; i++) {
-    const cell = document.createElement("div");
-    cell.className = "life-cell";
-    cell.dataset.i = i;
+    const c = document.createElement("div");
+    c.className = "life-cell";
+    c.dataset.i = i;
 
     if (current_week_index == null || i > current_week_index) {
-      cell.classList.add("future");
+      c.classList.add("future");
     } else if (i === current_week_index) {
-      cell.classList.add("current");
+      c.classList.add("current");
     } else {
-      cell.classList.add("lived");
+      c.classList.add("lived");
       const sc = state.scores?.[i];
-      if (sc && sc.band) cell.classList.add(`band-${sc.band}`);
+      if (sc && sc.band) c.classList.add(`band-${sc.band}`);
     }
 
     if (milestonesByWeek.has(i)) {
-      cell.classList.add("has-milestone");
-      cell.innerHTML = FLAG_SVG;
+      c.classList.add("has-milestone");
+      c.innerHTML = FLAG_SVG;
     }
-    frag.appendChild(cell);
+    frag.appendChild(c);
   }
   grid.appendChild(frag);
 
-  // Age labels down the left, one per decade row.
+  // Age gutter: label the first row of each decade of age. With a variable
+  // column count a row no longer equals a year, so derive age from the week
+  // index at the row's start (week = row * cols).
   const ages = document.createElement("div");
   ages.className = "life-ages";
+  ages.style.setProperty("--life-cell", `${cell}px`);
+  ages.style.setProperty("--life-gap", `${GAP}px`);
+  let lastDecade = -1;
   for (let r = 0; r < rows; r++) {
     const span = document.createElement("span");
-    if (r % 10 === 0) span.textContent = r;
+    const age = Math.floor((r * cols) / state.weeks_per_year);
+    const decade = Math.floor(age / 10) * 10;
+    if (decade !== lastDecade) { span.textContent = decade; lastDecade = decade; }
     ages.appendChild(span);
   }
 
@@ -217,6 +255,14 @@ function onHover(e) {
   t.innerHTML = `<strong>age ${age} · wk ${wk}</strong>
     <div class="life-tt-dim">${fmtDate(start)} → ${fmtDate(end)}</div>${msLine}`;
   t.style.opacity = "1";
-  t.style.left = e.pageX + 14 + "px";
-  t.style.top = e.pageY + 14 + "px";
+  // Viewport coords + position:fixed so the tooltip never extends the document
+  // (which would spawn a scrollbar). Flip near the right/bottom edges.
+  const pad = 14;
+  const r = t.getBoundingClientRect();
+  let x = e.clientX + pad;
+  let y = e.clientY + pad;
+  if (x + r.width > window.innerWidth) x = e.clientX - r.width - pad;
+  if (y + r.height > window.innerHeight) y = e.clientY - r.height - pad;
+  t.style.left = Math.max(4, x) + "px";
+  t.style.top = Math.max(4, y) + "px";
 }

@@ -45,7 +45,9 @@
       "Bash(.venv/bin/python -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\('total_weeks',d['total_weeks'],'birth',d['birth_date'],'scoring_active',d['scoring_active']\\)\")",
       "Bash(curl -s -o /dev/null -w \"life.js %{http_code}\\\\n\" http://127.0.0.1:8770/static/js/life.js)",
       "Bash(node --check web/static/js/settings.js)",
-      "Bash(curl -s http://127.0.0.1:8770/static/js/settings.js)"
+      "Bash(curl -s http://127.0.0.1:8770/static/js/settings.js)",
+      "Bash(node --check web/static/js/life.js)",
+      "Bash(curl -s http://127.0.0.1:8770/static/js/life.js)"
     ]
   }
 }

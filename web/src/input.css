@@ -585,7 +585,7 @@ select.rk-int option { background: var(--panel); color: var(--text); }
 .life-head-right { display: flex; align-items: center; gap: 18px; }
 .life-close { background: var(--panel-2); border: 1px solid var(--border-2); color: var(--dim); font-family: var(--mono); font-size: 11px; padding: 4px 9px; border-radius: 5px; cursor: pointer; }
 .life-close:hover { color: var(--text); }
-.life-body { flex: 1; overflow: auto; padding: 28px 24px 60px; display: flex; justify-content: center; }
+.life-body { flex: 1; overflow: auto; padding: 20px; display: flex; align-items: center; justify-content: center; }
 .life-msg { color: var(--dim); text-align: center; margin: auto; display: flex; flex-direction: column; gap: 14px; align-items: center; }
 .life-msg.life-err { color: var(--crit); }
 
@@ -593,22 +593,23 @@ select.rk-int option { background: var(--panel); color: var(--text); }
 .life-stat strong { color: var(--text-strong); font-family: var(--mono); }
 .life-legend-note { font-family: var(--mono); font-size: 10px; color: var(--dimmer); text-transform: uppercase; letter-spacing: 0.08em; }
 
-.life-grid-wrap { display: flex; gap: 10px; align-items: flex-start; }
+/* The grid sizes itself to fill the page (columns + cell size are computed in
+   JS from the viewport aspect ratio); we just center it. */
+.life-grid-wrap { display: flex; gap: 8px; align-items: flex-start; margin: auto; }
 .life-ages {
-  display: grid; grid-auto-rows: 14px; gap: 3px;
+  display: grid; grid-auto-rows: var(--life-cell, 14px); gap: var(--life-gap, 3px);
   font-family: var(--mono); font-size: 9px; color: var(--dim);
   text-align: right; padding-top: 1px; min-width: 18px;
 }
-.life-ages span { line-height: 14px; }
+.life-ages span { line-height: var(--life-cell, 14px); }
 .life-grid {
   display: grid;
-  grid-template-columns: repeat(var(--life-cols, 52), 11px);
-  grid-auto-rows: 11px; gap: 3px;
+  grid-auto-rows: var(--life-cell, 11px); gap: var(--life-gap, 3px);
 }
 .life-cell {
-  width: 11px; height: 11px; border-radius: 2px;
+  width: var(--life-cell, 11px); height: var(--life-cell, 11px); border-radius: 2px;
   background: var(--panel-2); border: 1px solid var(--border);
-  cursor: default; font-size: 8px; line-height: 9px; text-align: center;
+  cursor: default; text-align: center;
   transition: transform 0.08s;
 }
 .life-cell:hover { transform: scale(1.35); z-index: 2; border-color: var(--text); }
@@ -630,7 +631,7 @@ select.rk-int option { background: var(--panel); color: var(--text); }
 .life-cell.band-high { background: #63d98a; }
 
 .life-tooltip {
-  position: absolute; z-index: 400; pointer-events: none; opacity: 0;
+  position: fixed; z-index: 400; pointer-events: none; opacity: 0;
   background: #04060a; border: 1px solid var(--border-2); border-radius: 5px;
   padding: 6px 10px; font-family: var(--mono); font-size: 11px; color: var(--text);
   transition: opacity 0.1s; max-width: 240px;
