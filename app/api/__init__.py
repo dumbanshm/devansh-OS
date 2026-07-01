@@ -1,7 +1,7 @@
 """API routers, aggregated into one router mounted at /api."""
 from fastapi import APIRouter
 
-from . import cards, detail, heatmaps, neglect, protein, rituals, summary, timeline
+from . import cards, detail, heatmaps, life, neglect, protein, rituals, summary, timeline
 
 # NOTE: manual-entry endpoints (entries.router) are intentionally NOT mounted.
 # Devansh OS is an observability dashboard, not an editor — data comes from
@@ -16,3 +16,4 @@ api_router.include_router(timeline.router)
 api_router.include_router(detail.router)
 api_router.include_router(protein.router)
 api_router.include_router(rituals.router)
+api_router.include_router(life.router)

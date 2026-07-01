@@ -8,10 +8,14 @@ import { api } from "./api.js";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+// Lucide "flag" icon, inlined (offline-first — no icon-library dependency).
+const FLAG_SVG = `<svg class="life-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></svg>`;
+
 // Tab registry — single source of truth. Add a tab = append one entry here.
 const TABS = [
   { id: "protein", label: "Protein", render: renderProteinTab },
   { id: "rituals", label: "Rituals", render: renderRitualsTab },
+  { id: "life", label: "Life", render: renderLifeTab },
 ];
 let activeTab = "protein"; // remembered across opens
 
@@ -245,7 +249,130 @@ async function renderRitualsTab() {
   });
 }
 
+// ── Life tab ──────────────────────────────────────────────────────────────────
+
+async function renderLifeTab() {
+  let s, milestones;
+  try {
+    [s, { items: milestones }] = await Promise.all([
+      api.lifeSettings(), api.milestones(),
+    ]);
+  } catch (err) {
+    bodyEl.innerHTML = `<div class="d-error">Failed to load: ${esc(err.message)}</div>`;
+    return;
+  }
+
+  // Split any stored YYYY-MM-DD so the three pickers preselect it.
+  const [by, bm, bd] = (s.birth_date || "").split("-");
+  const now = new Date();
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const dayOpts = (sel) => Array.from({ length: 31 }, (_, i) => i + 1)
+    .map((d) => `<option value="${d}"${String(d) === String(+sel) ? " selected" : ""}>${d}</option>`).join("");
+  const monthOpts = (sel) => MONTHS
+    .map((m, i) => `<option value="${i + 1}"${String(i + 1) === String(+sel) ? " selected" : ""}>${m}</option>`).join("");
+  const yearOpts = (sel) => {
+    const end = now.getFullYear();
+    const years = [];
+    for (let y = end; y >= 1920; y--) years.push(y);
+    return years.map((y) => `<option value="${y}"${String(y) === String(+sel) ? " selected" : ""}>${y}</option>`).join("");
+  };
+
+  const milestoneRows = milestones.map((m) => `
+    <tr data-id="${m.id}">
+      <td class="ms-icon">${FLAG_SVG}</td>
+      <td><input class="st-in ms-in-title" value="${esc(m.title)}" /></td>
+      <td class="ms-day"><input class="st-in ms-in-day" type="date" value="${esc(m.day)}" /></td>
+      <td class="st-actions">
+        <button class="btn-link ms-save" title="save">save</button>
+        <button class="btn-link ms-del" title="delete">del</button>
+      </td>
+    </tr>`).join("");
+  const milestoneEmpty = `<tr class="rk-empty-row"><td colspan="4">No milestones yet — add your first below.</td></tr>`;
+
+  bodyEl.innerHTML = `
+    <section class="d-section">
+      <h4 class="d-heading">Life calendar</h4>
+      <label class="st-field"><span>Birth date</span></label>
+      <div class="st-dob">
+        <select id="st-birth-d" class="st-in" aria-label="Day"><option value="">DD</option>${dayOpts(bd)}</select>
+        <select id="st-birth-m" class="st-in" aria-label="Month"><option value="">MM</option>${monthOpts(bm)}</select>
+        <select id="st-birth-y" class="st-in" aria-label="Year"><option value="">YYYY</option>${yearOpts(by)}</select>
+      </div>
+      <div class="st-grid" style="margin-top:12px">
+        <label class="st-field"><span>Life expectancy (years)</span>
+          <input id="st-life-years" class="st-in" type="number" min="1" max="130" step="1" value="${s.life_expectancy_years}" /></label>
+      </div>
+      <button id="st-save-life" class="btn" style="margin-top:12px">save</button>
+      <p class="st-note">The grid is ${s.life_expectancy_years} rows × 52 weeks. Every box is one week of life — past filled, this week highlighted, the rest ahead of you.</p>
+    </section>
+
+    <section class="d-section">
+      <h4 class="d-heading">Milestones</h4>
+      <table class="st-table ms-table">
+        <thead><tr><th></th><th>Milestone</th><th>Date</th><th></th></tr></thead>
+        <tbody id="ms-list">${milestoneRows || milestoneEmpty}</tbody>
+        <tfoot>
+          <tr class="rk-add">
+            <td class="ms-icon">${FLAG_SVG}</td>
+            <td><input id="ms-new-title" class="st-in" placeholder="e.g. Started college" /></td>
+            <td class="ms-day"><input id="ms-new-day" class="st-in" type="date" /></td>
+            <td class="st-actions"><button id="ms-add" class="btn">add</button></td>
+          </tr>
+        </tfoot>
+      </table>
+      <p class="st-note">Milestones pin a marker to the week they fall in — past or future. They show on the Life calendar on hover.</p>
+    </section>`;
+
+  bodyEl.querySelector("#st-save-life").addEventListener("click", async (e) => {
+    const d = bodyEl.querySelector("#st-birth-d").value;
+    const m = bodyEl.querySelector("#st-birth-m").value;
+    const y = bodyEl.querySelector("#st-birth-y").value;
+    let birth_date = "";
+    if (d && m && y) {
+      birth_date = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    } else if (d || m || y) {
+      e.target.textContent = "pick D/M/Y";
+      setTimeout(() => { e.target.textContent = "save"; }, 1200);
+      return;
+    }
+    const body = {
+      birth_date,
+      life_expectancy_years: parseInt(bodyEl.querySelector("#st-life-years").value, 10),
+    };
+    await guard(e.target, api.lifeSettingsSave(body));
+  });
+
+  // ── wire milestone row save/delete (skip the empty-state placeholder) ──
+  bodyEl.querySelectorAll("#ms-list tr[data-id]").forEach((tr) => {
+    const id = Number(tr.dataset.id);
+    tr.querySelector(".ms-save").addEventListener("click", (e) =>
+      guard(e.target, api.milestoneUpdate(id, readMilestoneRow(tr))));
+    tr.querySelector(".ms-del").addEventListener("click", async (e) => {
+      await guard(e.target, api.milestoneDelete(id));
+      renderActive();
+    });
+  });
+
+  // ── wire milestone add ──
+  bodyEl.querySelector("#ms-add").addEventListener("click", async (e) => {
+    const title = bodyEl.querySelector("#ms-new-title").value.trim();
+    const day = bodyEl.querySelector("#ms-new-day").value;
+    if (!title || !day) return;
+    await guard(e.target, api.milestoneAdd({ day, title }));
+    renderActive();
+  });
+}
+
 // ── Shared helpers ──────────────────────────────────────────────────────────
+
+function readMilestoneRow(tr) {
+  return {
+    day: tr.querySelector(".ms-in-day").value,
+    title: tr.querySelector(".ms-in-title").value.trim(),
+  };
+}
 
 function readRitualRow(tr) {
   return {

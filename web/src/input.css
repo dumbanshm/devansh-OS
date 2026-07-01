@@ -558,3 +558,89 @@ select.rk-int option { background: var(--panel); color: var(--text); }
 .rk-switch input:checked + .rk-slider { background: #1d5e6e; }
 .rk-switch input:checked + .rk-slider::before { transform: translateX(14px); background: #34b3c8; }
 .rk-switch input:focus-visible + .rk-slider { outline: 1px solid var(--text); outline-offset: 1px; }
+
+/* Birth-date picker: three side-by-side selects (DD / MM / YYYY). */
+.st-dob { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 8px; margin-top: 4px; }
+.st-dob select { width: 100%; }
+
+/* ── Life calendar (full-viewport overlay) ───────────────────────────────── */
+.life-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 300;
+}
+.life-overlay.open { opacity: 1; pointer-events: auto; }
+.life-panel {
+  position: fixed; inset: 0; z-index: 301;
+  background: var(--bg); display: flex; flex-direction: column;
+  transform: scale(0.99); opacity: 0; transition: transform 0.2s ease, opacity 0.2s ease;
+  pointer-events: none;
+}
+.life-panel.open { transform: scale(1); opacity: 1; pointer-events: auto; }
+.life-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 24px; border-bottom: 1px solid var(--border);
+}
+.life-title { font-size: 15px; font-weight: 600; color: var(--text-strong); }
+.life-sub { color: var(--dim); font-weight: 400; font-size: 12px; }
+.life-head-right { display: flex; align-items: center; gap: 18px; }
+.life-close { background: var(--panel-2); border: 1px solid var(--border-2); color: var(--dim); font-family: var(--mono); font-size: 11px; padding: 4px 9px; border-radius: 5px; cursor: pointer; }
+.life-close:hover { color: var(--text); }
+.life-body { flex: 1; overflow: auto; padding: 28px 24px 60px; display: flex; justify-content: center; }
+.life-msg { color: var(--dim); text-align: center; margin: auto; display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.life-msg.life-err { color: var(--crit); }
+
+.life-legend { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--dim); }
+.life-stat strong { color: var(--text-strong); font-family: var(--mono); }
+.life-legend-note { font-family: var(--mono); font-size: 10px; color: var(--dimmer); text-transform: uppercase; letter-spacing: 0.08em; }
+
+.life-grid-wrap { display: flex; gap: 10px; align-items: flex-start; }
+.life-ages {
+  display: grid; grid-auto-rows: 14px; gap: 3px;
+  font-family: var(--mono); font-size: 9px; color: var(--dim);
+  text-align: right; padding-top: 1px; min-width: 18px;
+}
+.life-ages span { line-height: 14px; }
+.life-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--life-cols, 52), 11px);
+  grid-auto-rows: 11px; gap: 3px;
+}
+.life-cell {
+  width: 11px; height: 11px; border-radius: 2px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  cursor: default; font-size: 8px; line-height: 9px; text-align: center;
+  transition: transform 0.08s;
+}
+.life-cell:hover { transform: scale(1.35); z-index: 2; border-color: var(--text); }
+.life-cell.lived { background: var(--dimmer); border-color: transparent; }
+.life-cell.future { background: transparent; border-color: var(--border); }
+.life-cell.current {
+  background: var(--info); border-color: var(--text-strong);
+  animation: life-pulse 1.8s ease-in-out infinite;
+}
+@keyframes life-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(67,145,214,0.6); }
+  50% { box-shadow: 0 0 0 3px rgba(67,145,214,0); }
+}
+.life-cell.has-milestone { background: var(--warn); border-color: transparent; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.life-cell .life-flag { width: 8px; height: 8px; color: var(--bg); }
+/* Dormant scoring bands — active only once the value engine ships. */
+.life-cell.band-low { background: #2f4a38; }
+.life-cell.band-mid { background: #3f9a5a; }
+.life-cell.band-high { background: #63d98a; }
+
+.life-tooltip {
+  position: absolute; z-index: 400; pointer-events: none; opacity: 0;
+  background: #04060a; border: 1px solid var(--border-2); border-radius: 5px;
+  padding: 6px 10px; font-family: var(--mono); font-size: 11px; color: var(--text);
+  transition: opacity 0.1s; max-width: 240px;
+}
+.life-tooltip strong { color: var(--text-strong); }
+.life-tt-dim { color: var(--dim); font-size: 10px; margin-top: 2px; }
+.life-tt-ms { color: var(--warn); margin-top: 4px; font-size: 10px; }
+.life-tt-ms .life-flag { width: 10px; height: 10px; vertical-align: -1px; }
+
+/* Milestones table (Settings → Life). Narrow icon + date columns. */
+.ms-table .ms-icon { width: 28px; color: var(--warn); text-align: center; }
+.ms-table .ms-icon .life-flag { width: 14px; height: 14px; vertical-align: middle; }
+.ms-table .ms-day { width: 150px; }

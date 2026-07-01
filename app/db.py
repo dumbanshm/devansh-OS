@@ -336,3 +336,37 @@ def rituals_log_remove(ritual_id: int, day: str) -> None:
         conn.execute(
             "DELETE FROM rituals_log WHERE day=? AND ritual_id=?", (day, ritual_id)
         )
+
+
+# ── Life calendar: milestones ────────────────────────────────────────────────
+
+def milestones_all() -> list[sqlite3.Row]:
+    return query("SELECT * FROM milestones ORDER BY day")
+
+
+def milestones_get(milestone_id: int) -> sqlite3.Row | None:
+    return query_one("SELECT * FROM milestones WHERE id=?", (milestone_id,))
+
+
+def milestones_add(day: str, title: str, detail: str | None, emoji: str | None) -> int:
+    with connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO milestones (day, title, detail, emoji) VALUES (?, ?, ?, ?)",
+            (day, title, detail, emoji),
+        )
+        return int(cur.lastrowid)
+
+
+def milestones_update(
+    milestone_id: int, day: str, title: str, detail: str | None, emoji: str | None
+) -> None:
+    with connect() as conn:
+        conn.execute(
+            "UPDATE milestones SET day=?, title=?, detail=?, emoji=? WHERE id=?",
+            (day, title, detail, emoji, milestone_id),
+        )
+
+
+def milestones_delete(milestone_id: int) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM milestones WHERE id=?", (milestone_id,))

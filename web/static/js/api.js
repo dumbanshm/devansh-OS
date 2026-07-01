@@ -50,4 +50,13 @@ export const api = {
   ritualsBankAdd: (item) => http("POST", "/api/rituals/bank", item),
   ritualsBankUpdate: (id, item) => http("PUT", `/api/rituals/bank/${id}`, item),
   ritualsBankDelete: (id) => http("DELETE", `/api/rituals/bank/${id}`),
+
+  // Life calendar
+  life: () => http("GET", "/api/life"),
+  lifeSettings: () => http("GET", "/api/settings/life"),
+  lifeSettingsSave: (s) => http("PUT", "/api/settings/life", s),
+  milestones: () => http("GET", "/api/life/milestones"),
+  milestoneAdd: (m) => http("POST", "/api/life/milestones", m),
+  milestoneUpdate: (id, m) => http("PUT", `/api/life/milestones/${id}`, m),
+  milestoneDelete: (id) => http("DELETE", `/api/life/milestones/${id}`),
 };

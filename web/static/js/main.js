@@ -10,6 +10,7 @@ import { openDetail } from "./detail.js";
 import { openProtein } from "./protein.js";
 import { openRituals } from "./rituals.js";
 import { openSettings } from "./settings.js";
+import { openLife } from "./life.js";
 import { accent } from "./palette.js";
 import { initSpatialNav } from "./spatial_nav.js";
 import { initPaletteUI } from "./palette_ui.js";
@@ -129,6 +130,13 @@ function wireControls() {
       action: () => openRituals({ onChange: onRitualsChange })
     },
     {
+      id: "sys.life",
+      title: "Life Calendar",
+      category: "Navigation",
+      keywords: ["weeks", "memento", "mori", "lifespan", "milestones", "age"],
+      action: () => openLife()
+    },
+    {
       id: "sys.settings",
       title: "Open Settings",
       category: "Navigation",
@@ -149,6 +157,8 @@ function wireControls() {
       }
     }
   ]);
+
+  $("#life-btn").addEventListener("click", () => openLife());
 
   $("#protein-btn").addEventListener("click", () =>
     openProtein({ onChange: onProteinChange }));
