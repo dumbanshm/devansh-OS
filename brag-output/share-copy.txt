@@ -1,0 +1,2 @@
+I made Devansh OS.
+It watches everything I actually do — GitHub, LeetCode, gym, sleep — and reports what I didn't. No rest mode, no vacation mode, no pause button. Ever.

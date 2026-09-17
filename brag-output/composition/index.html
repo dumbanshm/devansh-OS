@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Devansh OS — brag</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/Inter-400.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/Inter-700.woff2") format("woff2");
+        font-weight: 700;
+        font-style: normal;
+        font-display: block;
+      }
+
+      :root {
+        --bg: #0a0c0f;
+        --panel: #11141a;
+        --panel2: #161a21;
+        --border: #1f242d;
+        --border2: #2a313c;
+        --text: #c9d1dc;
+        --text-strong: #eef2f7;
+        --text-dim: #6b7480;
+        --text-dim2: #474e58;
+        --crit: #cf5772;
+        --warn: #d0a83e;
+        --ok: #3f9a5a;
+        --info: #4391d6;
+        --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-sans);
+      }
+
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+      }
+
+      .clip {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+      }
+
+      /* ---------- Scene 1 — The verdict ---------- */
+      .s1-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 28px;
+      }
+      .s1-line1 {
+        font-family: var(--font-mono);
+        font-size: 54px;
+        color: var(--text-strong);
+        white-space: pre;
+      }
+      .s1-caret {
+        display: inline-block;
+        color: var(--text-strong);
+        margin-left: 2px;
+      }
+      .s1-line2 {
+        font-family: var(--font-mono);
+        font-size: 28px;
+        color: var(--text-dim);
+        opacity: 0;
+      }
+
+      /* ---------- Scene 2 — Neglect panel ---------- */
+      .s2-panel {
+        width: 1500px;
+        background: var(--panel);
+        border: 1px solid var(--border2);
+        border-radius: 10px;
+        padding: 40px 52px;
+      }
+      .s2-titlebar {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 22px;
+        margin-bottom: 26px;
+      }
+      .s2-title {
+        font-family: var(--font-mono);
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        color: var(--text-strong);
+      }
+      .s2-chips {
+        display: flex;
+        gap: 18px;
+      }
+      .chip {
+        font-family: var(--font-mono);
+        font-size: 24px;
+        font-weight: 700;
+        padding: 6px 16px;
+        border-radius: 6px;
+        opacity: 0;
+      }
+      .chip-crit {
+        color: var(--crit);
+        background: rgba(207, 87, 114, 0.12);
+        border: 1px solid rgba(207, 87, 114, 0.4);
+      }
+      .chip-warn {
+        color: var(--warn);
+        background: rgba(208, 168, 62, 0.12);
+        border: 1px solid rgba(208, 168, 62, 0.4);
+      }
+      .s2-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .s2-row {
+        font-family: var(--font-mono);
+        font-size: 27px;
+        opacity: 0;
+        padding-left: 4px;
+      }
+      .s2-row.crit {
+        color: var(--crit);
+      }
+      .s2-row.warn {
+        color: var(--warn);
+      }
+
+      /* ---------- Scene 3 — Activity grid ---------- */
+      .s3-panel {
+        width: 1560px;
+        background: var(--panel);
+        border: 1px solid var(--border2);
+        border-radius: 10px;
+        padding: 44px 56px;
+      }
+      .s3-title {
+        font-family: var(--font-mono);
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        color: var(--text-strong);
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+      }
+      .s3-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .s3-rowline {
+        display: flex;
+        align-items: center;
+        gap: 26px;
+      }
+      .s3-label {
+        font-family: var(--font-mono);
+        font-size: 22px;
+        color: #777f8a;
+        width: 130px;
+        flex: none;
+      }
+      .s3-cells {
+        display: flex;
+        gap: 6px;
+      }
+      .s3-cell {
+        width: 30px;
+        height: 30px;
+        border-radius: 4px;
+        background: var(--panel2);
+        border: 1px solid var(--border);
+        opacity: 0;
+      }
+      .s3-cell.lvl-1 {
+        background: rgba(63, 154, 90, 0.28);
+      }
+      .s3-cell.lvl-2 {
+        background: rgba(63, 154, 90, 0.5);
+      }
+      .s3-cell.lvl-3 {
+        background: rgba(63, 154, 90, 0.75);
+      }
+      .s3-cell.lvl-4 {
+        background: var(--ok);
+      }
+
+      /* ---------- Scene 4 — Life in Weeks ---------- */
+      #scene-weeks {
+        flex-direction: column;
+        gap: 34px;
+        opacity: 0;
+      }
+      .s4-grid {
+        display: grid;
+        grid-auto-flow: column;
+        gap: 3px;
+        position: relative;
+      }
+      .s4-cell {
+        width: 16px;
+        height: 14px;
+        border-radius: 2px;
+        background: transparent;
+        border: 1px solid var(--border);
+      }
+      .s4-cell.dim {
+        background: var(--panel2);
+        border-color: var(--border2);
+      }
+      .s4-cell.current {
+        background: var(--info);
+        border-color: var(--info);
+      }
+      .s4-flag {
+        position: absolute;
+        font-size: 20px;
+        color: var(--warn);
+        transform: translate(-4px, -22px);
+        line-height: 1;
+        pointer-events: none;
+      }
+      .s4-caption {
+        font-family: var(--font-sans);
+        font-size: 26px;
+        color: var(--text-dim);
+        letter-spacing: 0.01em;
+      }
+
+      /* ---------- Scene 5 — Outro / punchline ---------- */
+      .s5-wrap {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .s5-line {
+        font-family: var(--font-mono);
+        font-size: 44px;
+        color: var(--text-strong);
+        white-space: pre;
+      }
+      .s5-caret {
+        display: inline-block;
+        color: var(--text-strong);
+        margin-left: 2px;
+      }
+      .s5-wordmark {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        opacity: 0;
+      }
+      .s5-mark {
+        font-family: var(--font-sans);
+        font-weight: 700;
+        font-size: 66px;
+        color: var(--text-strong);
+        letter-spacing: 0.01em;
+      }
+      .s5-tagline {
+        font-family: var(--font-mono);
+        font-size: 26px;
+        color: var(--text-dim);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="devansh-os-brag"
+      data-start="0"
+      data-width="1920"
+      data-height="1080"
+      data-duration="19"
+    >
+      <!-- Scene 1 — The verdict (0-3s) -->
+      <section id="scene-verdict" class="clip" data-start="0" data-duration="3" data-track-index="1">
+        <div class="s1-wrap">
+          <div class="s1-line1"><span id="s1-typed"></span><span class="s1-caret" id="s1-caret">▍</span></div>
+          <div id="s1-line2" class="s1-line2">It knows.</div>
+        </div>
+      </section>
+
+      <!-- Scene 2 — Neglect panel (3-7s) -->
+      <section id="scene-neglect" class="clip" data-start="3" data-duration="4" data-track-index="1">
+        <div class="s2-panel">
+          <div class="s2-titlebar">
+            <span class="s2-title">NEGLECT DETECTION</span>
+            <span class="s2-chips">
+              <span id="s2-chip-crit" class="chip chip-crit">✕ 1 critical</span>
+              <span id="s2-chip-warn" class="chip chip-warn">! 2 warning</span>
+            </span>
+          </div>
+          <div class="s2-rows">
+            <div id="s2-row1" class="s2-row crit">✕ Gym: last activity 6 days ago</div>
+            <div id="s2-row2" class="s2-row warn">! LeetCode: last activity 3 days ago</div>
+            <div id="s2-row3" class="s2-row warn">! Sleep: 7-day avg 5.4h</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 3 — Activity grid (7-11s) -->
+      <section id="scene-grid" class="clip" data-start="7" data-duration="4" data-track-index="1">
+        <div class="s3-panel">
+          <div class="s3-title">ACTIVITY</div>
+          <div class="s3-rows" id="s3-rows">
+            <div class="s3-rowline">
+              <span class="s3-label">Commits</span>
+              <div class="s3-cells" data-row="commits"></div>
+            </div>
+            <div class="s3-rowline">
+              <span class="s3-label">Solved</span>
+              <div class="s3-cells" data-row="solved"></div>
+            </div>
+            <div class="s3-rowline">
+              <span class="s3-label">Workout</span>
+              <div class="s3-cells" data-row="workout"></div>
+            </div>
+            <div class="s3-rowline">
+              <span class="s3-label">Sleep</span>
+              <div class="s3-cells" data-row="sleep"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 4 — Life in Weeks (11-16s) -->
+      <section
+        id="scene-weeks"
+        class="clip"
+        data-start="11"
+        data-duration="5"
+        data-track-index="1"
+        style="opacity: 0"
+      >
+        <div class="s4-grid" id="s4-grid"></div>
+        <div class="s4-caption">Life in Weeks — every box is one week</div>
+      </section>
+
+      <!-- Scene 5 — Outro / punchline (16-19s) -->
+      <section id="scene-outro" class="clip" data-start="16" data-duration="3" data-track-index="1">
+        <div class="s5-wrap">
+          <div class="s5-line" id="s5-line"><span id="s5-typed"></span><span class="s5-caret" id="s5-caret">▍</span></div>
+          <div class="s5-wordmark" id="s5-wordmark">
+            <div class="s5-mark">◐ Devansh OS</div>
+            <div class="s5-tagline">it just tells you the truth.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Audio: music bed, root-level so it survives scene cuts -->
+      <audio
+        id="bgm"
+        src="assets/music/happy-beats-business-moves-vol-10-by-ende-dot-app.mp3"
+        data-start="0"
+        data-duration="19"
+        data-track-index="10"
+        data-volume="0"
+      ></audio>
+
+      <!-- SFX: single low alert blip on the critical chip -->
+      <audio
+        id="alert-blip"
+        src="assets/sfx/alert-blip.ogg"
+        data-start="3.15"
+        data-duration="0.5"
+        data-track-index="23"
+        data-volume="0.55"
+      ></audio>
+
+      <!-- SFX: dry tick per neglect row arrival -->
+      <audio id="row-tick-1" src="assets/sfx/row-tick.ogg" data-start="3.6" data-duration="0.01" data-track-index="24" data-volume="0.6"></audio>
+      <audio id="row-tick-2" src="assets/sfx/row-tick.ogg" data-start="4.0983" data-duration="0.01" data-track-index="24" data-volume="0.6"></audio>
+      <audio id="row-tick-3" src="assets/sfx/row-tick.ogg" data-start="4.55" data-duration="0.01" data-track-index="24" data-volume="0.6"></audio>
+
+      <!-- SFX: quiet rapid patter texture under the heatmap fill -->
+      <audio id="cell-tick-1" src="assets/sfx/cell-tick.ogg" data-start="7.15" data-duration="0.01" data-track-index="25" data-volume="0.25"></audio>
+      <audio id="cell-tick-2" src="assets/sfx/cell-tick.ogg" data-start="7.3" data-duration="0.01" data-track-index="26" data-volume="0.25"></audio>
+      <audio id="cell-tick-3" src="assets/sfx/cell-tick.ogg" data-start="7.45" data-duration="0.01" data-track-index="25" data-volume="0.25"></audio>
+      <audio id="cell-tick-4" src="assets/sfx/cell-tick.ogg" data-start="7.6" data-duration="0.01" data-track-index="26" data-volume="0.25"></audio>
+      <audio id="cell-tick-5" src="assets/sfx/cell-tick.ogg" data-start="7.75" data-duration="0.01" data-track-index="25" data-volume="0.25"></audio>
+      <audio id="cell-tick-6" src="assets/sfx/cell-tick.ogg" data-start="7.9" data-duration="0.01" data-track-index="26" data-volume="0.25"></audio>
+      <audio id="cell-tick-7" src="assets/sfx/cell-tick.ogg" data-start="8.05" data-duration="0.01" data-track-index="25" data-volume="0.25"></audio>
+      <audio id="cell-tick-8" src="assets/sfx/cell-tick.ogg" data-start="8.2" data-duration="0.01" data-track-index="26" data-volume="0.25"></audio>
+
+      <!-- SFX: key ticks under Scene 1's typed hook line -->
+      <audio id="tick-s1-0" src="assets/sfx/key-tick-001.wav" data-start="0.33" data-duration="0.12" data-track-index="20" data-volume="0.45"></audio>
+      <audio id="tick-s1-1" src="assets/sfx/key-tick-003.wav" data-start="0.46" data-duration="0.12" data-track-index="21" data-volume="0.45"></audio>
+      <audio id="tick-s1-2" src="assets/sfx/key-tick-005.wav" data-start="0.59" data-duration="0.12" data-track-index="22" data-volume="0.45"></audio>
+      <audio id="tick-s1-3" src="assets/sfx/key-tick-007.wav" data-start="0.72" data-duration="0.12" data-track-index="20" data-volume="0.45"></audio>
+      <audio id="tick-s1-4" src="assets/sfx/key-tick-009.wav" data-start="0.85" data-duration="0.12" data-track-index="21" data-volume="0.45"></audio>
+      <audio id="tick-s1-5" src="assets/sfx/key-tick-001.wav" data-start="0.98" data-duration="0.12" data-track-index="22" data-volume="0.45"></audio>
+      <audio id="tick-s1-6" src="assets/sfx/key-tick-003.wav" data-start="1.11" data-duration="0.12" data-track-index="20" data-volume="0.45"></audio>
+      <audio id="tick-s1-7" src="assets/sfx/key-tick-005.wav" data-start="1.24" data-duration="0.12" data-track-index="21" data-volume="0.45"></audio>
+      <audio id="tick-s1-8" src="assets/sfx/key-tick-007.wav" data-start="1.37" data-duration="0.12" data-track-index="22" data-volume="0.45"></audio>
+      <audio id="tick-s1-9" src="assets/sfx/key-tick-009.wav" data-start="1.5" data-duration="0.12" data-track-index="20" data-volume="0.45"></audio>
+
+      <!-- SFX: key ticks under Scene 5's typed punchline -->
+      <audio id="tick-s5-0" src="assets/sfx/key-tick-001.wav" data-start="16.1656" data-duration="0.12" data-track-index="21" data-volume="0.45"></audio>
+      <audio id="tick-s5-1" src="assets/sfx/key-tick-003.wav" data-start="16.2511" data-duration="0.12" data-track-index="22" data-volume="0.45"></audio>
+      <audio id="tick-s5-2" src="assets/sfx/key-tick-005.wav" data-start="16.3367" data-duration="0.12" data-track-index="20" data-volume="0.45"></audio>
+      <audio id="tick-s5-3" src="assets/sfx/key-tick-007.wav" data-start="16.4222" data-duration="0.12" data-track-index="21" data-volume="0.45"></audio>
+      <audio id="tick-s5-4" src="assets/sfx/key-tick-009.wav" data-start="16.5078" data-duration="0.12" data-track-index="22" data-volume="0.45"></audio>
+      <audio id="tick-s5-5" src="assets/sfx/key-tick-001.wav" data-start="16.5933" data-duration="0.12" data-track-index="20" data-volume="0.45"></audio>
+      <audio id="tick-s5-6" src="assets/sfx/key-tick-003.wav" data-start="16.6789" data-duration="0.12" data-track-index="21" data-volume="0.45"></audio>
+      <audio id="tick-s5-7" src="assets/sfx/key-tick-005.wav" data-start="16.7644" data-duration="0.12" data-track-index="22" data-volume="0.45"></audio>
+      <audio id="tick-s5-8" src="assets/sfx/key-tick-007.wav" data-start="16.85" data-duration="0.12" data-track-index="20" data-volume="0.45"></audio>
+      <audio id="tick-s5-9" src="assets/sfx/key-tick-009.wav" data-start="16.9356" data-duration="0.12" data-track-index="21" data-volume="0.45"></audio>
+      <audio id="tick-s5-10" src="assets/sfx/key-tick-001.wav" data-start="17.0211" data-duration="0.12" data-track-index="22" data-volume="0.45"></audio>
+      <audio id="tick-s5-11" src="assets/sfx/key-tick-003.wav" data-start="17.1067" data-duration="0.12" data-track-index="20" data-volume="0.45"></audio>
+      <audio id="tick-s5-12" src="assets/sfx/key-tick-005.wav" data-start="17.1922" data-duration="0.12" data-track-index="21" data-volume="0.45"></audio>
+      <audio id="tick-s5-13" src="assets/sfx/key-tick-007.wav" data-start="17.2778" data-duration="0.12" data-track-index="22" data-volume="0.45"></audio>
+      <audio id="tick-s5-14" src="assets/sfx/key-tick-009.wav" data-start="17.3633" data-duration="0.12" data-track-index="20" data-volume="0.45"></audio>
+      <audio id="tick-s5-15" src="assets/sfx/key-tick-001.wav" data-start="17.4489" data-duration="0.12" data-track-index="21" data-volume="0.45"></audio>
+      <audio id="tick-s5-16" src="assets/sfx/key-tick-003.wav" data-start="17.5344" data-duration="0.12" data-track-index="22" data-volume="0.45"></audio>
+      <audio id="tick-s5-17" src="assets/sfx/key-tick-005.wav" data-start="17.62" data-duration="0.12" data-track-index="20" data-volume="0.45"></audio>
+    </div>
+
+    <script>
+      document.fonts.ready.then(function () {
+        var tl = gsap.timeline({ paused: true });
+
+        // ================= Scene 1 — The verdict =================
+        (function () {
+          var LINE = "Gym: last activity 6 days ago.";
+          var el = document.getElementById("s1-typed");
+          var t0 = 0.2,
+            t1 = 1.5;
+          var n = LINE.length;
+          var dt = (t1 - t0) / n;
+          for (var i = 0; i < n; i++) {
+            (function (idx) {
+              tl.call(
+                function () {
+                  el.textContent = LINE.substring(0, idx + 1);
+                },
+                null,
+                t0 + (idx + 1) * dt,
+              );
+            })(i);
+          }
+          // caret blink, finite cycles
+          tl.to("#s1-caret", { opacity: 0, duration: 0.12, yoyo: true, repeat: 11, ease: "steps(1)" }, 0);
+          // "It knows." — flat fade-in after the hold
+          tl.fromTo("#s1-line2", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power1.out" }, 2.5);
+        })();
+
+        // ================= Scene 2 — Neglect panel =================
+        (function () {
+          tl.fromTo(
+            "#s2-chip-crit",
+            { opacity: 0, y: -6 },
+            { opacity: 1, y: 0, duration: 0.16, ease: "power2.out" },
+            3.15,
+          );
+          tl.fromTo(
+            "#s2-chip-warn",
+            { opacity: 0, y: -6 },
+            { opacity: 1, y: 0, duration: 0.16, ease: "power2.out" },
+            3.22,
+          );
+          tl.fromTo("#s2-row1", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.18, ease: "power2.out" }, 3.6);
+          // beat-locked: row 2 lands on the strong cue at 4.0983s (vol-10 cue preset)
+          tl.fromTo(
+            "#s2-row2",
+            { opacity: 0, y: 8 },
+            { opacity: 1, y: 0, duration: 0.18, ease: "power2.out" },
+            4.0983,
+          );
+          tl.fromTo("#s2-row3", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.18, ease: "power2.out" }, 4.55);
+        })();
+
+        // ================= Scene 3 — Activity grid =================
+        (function () {
+          // Seeded PRNG so the "random-looking" fill is deterministic frame to frame.
+          function mulberry32(seed) {
+            return function () {
+              seed |= 0;
+              seed = (seed + 0x6d2b79f5) | 0;
+              var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+              t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+              return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+          }
+          var rand = mulberry32(1337);
+          var COLS = 26;
+          var rows = ["commits", "solved", "workout", "sleep"];
+          var allCells = [];
+          rows.forEach(function (rowName) {
+            var host = document.querySelector('.s3-cells[data-row="' + rowName + '"]');
+            for (var c = 0; c < COLS; c++) {
+              var lvl = Math.floor(rand() * 5); // 0..4
+              var cell = document.createElement("div");
+              cell.className = "s3-cell" + (lvl > 0 ? " lvl-" + lvl : "");
+              host.appendChild(cell);
+              allCells.push(cell);
+            }
+          });
+          // beat-locked: fill begins on the strong cue at 7.1053s (vol-10 cue preset)
+          tl.to(allCells, { opacity: 1, duration: 0.5, ease: "none", stagger: 0.011 }, 7.1053);
+        })();
+
+        // ================= Scene 4 — Life in Weeks =================
+        (function () {
+          var ROWS = 52; // weeks per year
+          var COLS = 90; // years
+          var WEEKS_LIVED = 1640; // fixed, deterministic — not derived from wall-clock time
+          var MILESTONE_INDEX = 900;
+          var grid = document.getElementById("s4-grid");
+          grid.style.gridTemplateRows = "repeat(" + ROWS + ", 14px)";
+          grid.style.gridTemplateColumns = "repeat(" + COLS + ", 16px)";
+
+          var currentCell = null;
+          for (var col = 0; col < COLS; col++) {
+            for (var row = 0; row < ROWS; row++) {
+              var index = col * ROWS + row;
+              var cell = document.createElement("div");
+              cell.className = "s4-cell";
+              if (index < WEEKS_LIVED) cell.classList.add("dim");
+              if (index === WEEKS_LIVED) {
+                cell.classList.add("current");
+                currentCell = cell;
+              }
+              if (index === MILESTONE_INDEX) {
+                var flag = document.createElement("span");
+                flag.className = "s4-flag";
+                flag.textContent = "⚑";
+                flag.setAttribute("data-layout-allow-overflow", "true");
+                cell.style.position = "relative";
+                cell.appendChild(flag);
+              }
+              grid.appendChild(cell);
+            }
+          }
+
+          tl.set("#scene-weeks", { opacity: 0 }, 0);
+          tl.fromTo("#scene-weeks", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power1.inOut" }, 11.0);
+          tl.to("#scene-weeks", { opacity: 0, duration: 0.35, ease: "power1.inOut" }, 15.65);
+          // current-week pulse — finite repeat (deterministic, no repeat:-1)
+          if (currentCell) {
+            tl.fromTo(
+              currentCell,
+              { opacity: 1 },
+              { opacity: 0.35, duration: 0.45, yoyo: true, repeat: 8, ease: "sine.inOut" },
+              11.4,
+            );
+          }
+        })();
+
+        // ================= Scene 5 — Outro / punchline =================
+        (function () {
+          var LINE = "No rest mode. No vacation mode. No pause button. Ever.";
+          var el = document.getElementById("s5-typed");
+          var t0 = 16.08,
+            t1 = 17.62;
+          var n = LINE.length;
+          var dt = (t1 - t0) / n;
+          for (var i = 0; i < n; i++) {
+            (function (idx) {
+              tl.call(
+                function () {
+                  el.textContent = LINE.substring(0, idx + 1);
+                },
+                null,
+                t0 + (idx + 1) * dt,
+              );
+            })(i);
+          }
+          tl.to("#s5-caret", { opacity: 0, duration: 0.12, yoyo: true, repeat: 20, ease: "steps(1)" }, 16.0);
+          // hard cut: typed line disappears, wordmark appears — no crossfade, deadpan
+          tl.set("#s5-line", { opacity: 0 }, 18.0071);
+          // beat-locked: wordmark lands on the strong cue at 18.0071s (vol-10 cue preset)
+          tl.set("#s5-wordmark", { opacity: 1 }, 18.0071);
+        })();
+
+        // ================= Music bed — volume automation =================
+        // Quiet start under the hook, small lift through the neglect/heatmap
+        // section, dip for Life in Weeks, hard fade to silence under the
+        // punchline so the wordmark lands in near-silence.
+        tl.set("#bgm", { volume: 0 }, 0);
+        tl.to("#bgm", { volume: 0.05, duration: 0.6, ease: "none" }, 1.6);
+        tl.to("#bgm", { volume: 0.12, duration: 0.8, ease: "none" }, 3.0);
+        tl.to("#bgm", { volume: 0.12, duration: 0.1, ease: "none" }, 10.5);
+        tl.to("#bgm", { volume: 0.06, duration: 0.6, ease: "none" }, 11.0);
+        tl.to("#bgm", { volume: 0.06, duration: 0.1, ease: "none" }, 15.6);
+        tl.to("#bgm", { volume: 0, duration: 1.4, ease: "power1.in" }, 16.1);
+
+        window.__timelines["devansh-os-brag"] = tl;
+        if (window.__hfForceTimelineRebind) window.__hfForceTimelineRebind();
+      });
+    </script>
+  </body>
+</html>
