@@ -28,7 +28,7 @@ def timeline(days: int = 7):
     start_day = date.fromordinal(start).strftime("%Y-%m-%d")
     rows = query(
         "SELECT provider, type, ts, day, title, detail, payload FROM events "
-        "WHERE day >= ? ORDER BY ts DESC LIMIT 500",
+        "WHERE day >= %s ORDER BY ts DESC LIMIT 500",
         (start_day,),
     )
     names = {p.key: p.display_name for p in registry.all()}

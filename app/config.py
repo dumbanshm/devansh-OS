@@ -26,9 +26,10 @@ else:
 USER_DIR.mkdir(parents=True, exist_ok=True)
 
 WEB_DIR = RESOURCE_DIR / "web"
-MIGRATIONS_DIR = RESOURCE_DIR / "migrations"
-DATA_DIR = USER_DIR / "data"
 ENV_FILE = USER_DIR / ".env"
+# Local data drop folder — no longer holds the DB (that's Supabase now), but
+# still used for the Hevy CSV export drop (see app/providers/gym.py).
+DATA_DIR = USER_DIR / "data"
 
 
 class Settings(BaseSettings):
@@ -72,6 +73,10 @@ class Settings(BaseSettings):
     poll_minutes: int = 30
     timezone: str = "UTC"
 
+    # Supabase Postgres connection string (the `postgres` role — bypasses RLS;
+    # FastAPI is a trusted server component, see supabase/migrations' RLS file).
+    database_url: str = ""
+
     # Server
     host: str = "127.0.0.1"
     port: int = 8000
@@ -83,10 +88,6 @@ class Settings(BaseSettings):
     @property
     def git_author_matchers(self) -> list[str]:
         return [a.strip().lower() for a in self.git_authors.split(",") if a.strip()]
-
-    @property
-    def db_path(self) -> Path:
-        return DATA_DIR / "devansh.db"
 
     @property
     def tz(self) -> ZoneInfo:

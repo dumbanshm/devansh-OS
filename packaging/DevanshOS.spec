@@ -19,7 +19,6 @@ hiddenimports = (
 
 datas = [
     (os.path.join(ROOT, "web"), "web"),
-    (os.path.join(ROOT, "migrations"), "migrations"),
     (os.path.join(ROOT, ".env.example"), "."),
 ]
 

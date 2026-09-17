@@ -51,14 +51,14 @@ class ManualProvider(DataProvider):
         spec = self.metrics[0]
         if day:
             rows = query(
-                "SELECT day, value FROM metric_daily WHERE provider=? AND metric=? "
-                "AND day=?",
+                "SELECT day, value FROM metric_daily WHERE provider=%s AND metric=%s "
+                "AND day=%s",
                 (self.key, spec.key, day),
             )
             title = f"{self.display_name} — {day}"
         else:
             rows = query(
-                "SELECT day, value FROM metric_daily WHERE provider=? AND metric=? "
+                "SELECT day, value FROM metric_daily WHERE provider=%s AND metric=%s "
                 "ORDER BY day DESC LIMIT 30",
                 (self.key, spec.key),
             )

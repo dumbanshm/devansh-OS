@@ -19,13 +19,8 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 COPY app ./app
-COPY migrations ./migrations
 COPY web ./web
 COPY --from=css /build/web/static/app.css ./web/static/app.css
-
-# SQLite lives in a mounted volume so data survives container rebuilds.
-RUN mkdir -p /app/data
-VOLUME ["/app/data"]
 
 ENV HOST=0.0.0.0 PORT=8000
 EXPOSE 8000

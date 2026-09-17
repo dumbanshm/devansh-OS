@@ -1,18 +1,22 @@
-"""Pure aggregation helpers over ``metric_daily``.
+"""Thin wrappers over the Postgres compute layer (supabase/migrations/*_compute_layer.sql).
 
-Shared by cards, heatmaps and the neglect engine so streak/recency/rollup logic
-lives in exactly one place.
+The streak/recency/rollup math itself now lives in SQL (fn_days_since,
+fn_rolling_avg, fn_current_streak, ...) so any client — FastAPI or the Flutter
+app — reads identical, live-computed values without this process running.
+These wrappers exist so callers (api/cards.py, api/heatmaps.py, neglect.py,
+providers) don't need to change.
 """
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
 from .config import get_settings
-from .db import get_setting, metric_series
+from .db import metric_series, query_one
 
 
 def today() -> date:
-    return datetime.now(get_settings().tz).date()
+    row = query_one("SELECT fn_today() AS d")
+    return row["d"] if row else datetime.now(get_settings().tz).date()
 
 
 def _iso(d: date) -> str:
@@ -20,20 +24,13 @@ def _iso(d: date) -> str:
 
 
 def protein_day(now: datetime | None = None) -> str:
-    """Logical protein-day, anchored to the eating window so a session that runs
-    past midnight stays on a single day.
-
-    For a wrap-around window (end <= start, e.g. 12:00 → 04:00) the post-midnight
-    tail ``[00:00, end)`` belongs to the day the window opened — i.e. yesterday.
-    For a normal same-day window this is just the calendar date.
-    """
-    now = now or datetime.now(get_settings().tz)
-    ws = int(get_setting("protein_window_start", 8) or 8)
-    we = int(get_setting("protein_window_end", 22) or 22)
-    d = now.date()
-    if we <= ws and now.hour < we:
-        d = d - timedelta(days=1)
-    return _iso(d)
+    """Logical protein-day (see fn_protein_day() in the compute-layer migration
+    for the wrap-around eating-window logic). ``now`` is accepted for call-site
+    compatibility but every caller passes the current moment, so this always
+    delegates to the DB's live "now" rather than reimplementing the anchoring
+    logic twice."""
+    row = query_one("SELECT fn_protein_day() AS d")
+    return _iso(row["d"]) if row else _iso(today())
 
 
 def series_for_year(provider: str, metric: str) -> dict[str, float]:
@@ -49,11 +46,13 @@ def window_series(provider: str, metric: str, days: int) -> dict[str, float]:
 
 
 def week_sum(provider: str, metric: str) -> float:
-    return round(sum(window_series(provider, metric, 7).values()), 2)
+    row = query_one("SELECT fn_week_sum(%s, %s) AS v", (provider, metric))
+    return float(row["v"] or 0) if row else 0.0
 
 
 def month_sum(provider: str, metric: str) -> float:
-    return round(sum(window_series(provider, metric, 30).values()), 2)
+    row = query_one("SELECT fn_month_sum(%s, %s) AS v", (provider, metric))
+    return float(row["v"] or 0) if row else 0.0
 
 
 def week_avg(provider: str, metric: str) -> float:
@@ -68,56 +67,25 @@ def day_avg(provider: str, metric: str, days: int = 30) -> float:
 
 
 def rolling_avg(provider: str, metric: str, window: int) -> float:
-    """Average across *every* day in the window, including zero/missing days."""
-    s = window_series(provider, metric, window)
-    total = sum(s.values())
-    return round(total / window, 2) if window else 0.0
+    row = query_one("SELECT fn_rolling_avg(%s, %s, %s) AS v", (provider, metric, window))
+    return float(row["v"] or 0) if row else 0.0
 
 
 def last_active_day(provider: str, metric: str) -> str | None:
-    """The most recent day with a positive value, or None."""
-    s = series_for_year(provider, metric)
-    active = sorted(d for d, v in s.items() if v > 0)
-    return active[-1] if active else None
+    row = query_one("SELECT fn_last_active_day(%s, %s) AS d", (provider, metric))
+    return _iso(row["d"]) if row and row["d"] else None
 
 
 def days_since(provider: str, metric: str) -> int | None:
-    last = last_active_day(provider, metric)
-    if last is None:
-        return None
-    return (today() - date.fromisoformat(last)).days
-
-
-def _active_days(provider: str, metric: str) -> set[str]:
-    return {d for d, v in series_for_year(provider, metric).items() if v > 0}
+    row = query_one("SELECT fn_days_since(%s, %s) AS n", (provider, metric))
+    return row["n"] if row else None
 
 
 def current_streak(provider: str, metric: str) -> int:
-    """Consecutive active days ending today (or yesterday — today still counts as
-    a live streak even before today's entry exists)."""
-    active = _active_days(provider, metric)
-    if not active:
-        return 0
-    streak = 0
-    cursor = today()
-    # Allow the streak to "hold" if today isn't logged yet.
-    if _iso(cursor) not in active:
-        cursor -= timedelta(days=1)
-    while _iso(cursor) in active:
-        streak += 1
-        cursor -= timedelta(days=1)
-    return streak
+    row = query_one("SELECT fn_current_streak(%s, %s) AS n", (provider, metric))
+    return int(row["n"] or 0) if row else 0
 
 
 def longest_streak(provider: str, metric: str) -> int:
-    active = sorted(_active_days(provider, metric))
-    if not active:
-        return 0
-    best = run = 1
-    prev = date.fromisoformat(active[0])
-    for d_str in active[1:]:
-        d = date.fromisoformat(d_str)
-        run = run + 1 if (d - prev).days == 1 else 1
-        best = max(best, run)
-        prev = d
-    return best
+    row = query_one("SELECT fn_longest_streak(%s, %s) AS n", (provider, metric))
+    return int(row["n"] or 0) if row else 0

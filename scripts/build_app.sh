@@ -13,14 +13,13 @@ pip install -q -r requirements.txt -r requirements-desktop.txt
 echo "→ packaging with PyInstaller"
 pyinstaller --noconfirm packaging/DevanshOS.spec
 
-# Seed the user data dir so the app keeps your existing config + history.
+# Seed the user data dir so the app keeps your existing config (incl.
+# DATABASE_URL) + Hevy CSV drop. The database itself now lives in Supabase,
+# not a local file, so there's nothing to copy for it.
 APPSUP="$HOME/Library/Application Support/DevanshOS"
 mkdir -p "$APPSUP/data"
 if [ ! -f "$APPSUP/.env" ] && [ -f .env ]; then
   cp .env "$APPSUP/.env"; echo "  · copied .env → $APPSUP"
-fi
-if [ ! -f "$APPSUP/data/devansh.db" ] && [ -f data/devansh.db ]; then
-  cp data/devansh.db "$APPSUP/data/"; echo "  · copied database → $APPSUP/data"
 fi
 if [ -d data/hevy ] && [ ! -e "$APPSUP/data/hevy" ]; then
   cp -R data/hevy "$APPSUP/data/"; echo "  · copied Hevy CSV → $APPSUP/data/hevy"

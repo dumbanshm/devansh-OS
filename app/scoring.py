@@ -22,10 +22,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable
 
-from .db import query
+from .db import get_setting, query
 
 # A contributor turns one week's metric rows into a normalised 0..1 signal.
-# rows are sqlite3.Row with (provider, metric, day, value).
+# rows are dicts with (provider, metric, day, value).
 SignalFn = Callable[[list], float]
 
 
@@ -61,19 +61,26 @@ def is_active() -> bool:
 def _week_rows(week_start_iso: str, week_end_iso: str) -> list:
     """All metric_daily rows in the inclusive week range [start, end]."""
     return query(
-        "SELECT provider, metric, day, value FROM metric_daily WHERE day BETWEEN ? AND ?",
+        "SELECT provider, metric, day, value FROM metric_daily WHERE day BETWEEN %s AND %s",
         (week_start_iso, week_end_iso),
     )
 
 
 def _band_for(score: float) -> str:
-    if score >= 0.75:
-        return "high"
-    if score >= 0.5:
-        return "mid"
-    if score >= 0.25:
-        return "low"
-    return "empty"
+    """Additive, green-only mapping (no red). A week earns a mark only when it
+    clears the configurable quality bar; anything below reads as a plain lived
+    week — identical to an untracked one, so a miss carries no visual penalty.
+
+        below threshold        → "lived" (neutral)
+        >= threshold           → "good"  (green)
+        >= threshold + halfway  → "great" (brighter green)
+    """
+    threshold = float(get_setting("week_good_threshold", 0.35) or 0.35)
+    if score >= threshold + (1.0 - threshold) / 2.0:
+        return "great"
+    if score >= threshold:
+        return "good"
+    return "lived"
 
 
 def score_week(week_start_iso: str, week_end_iso: str) -> WeekScore:

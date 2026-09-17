@@ -1,0 +1,48 @@
+name: Build mobile APK
+
+# Builds the Flutter app in mobile/ into a release APK, entirely in the cloud —
+# no local Flutter/Android SDK install needed. Download the result from the
+# workflow run's "Artifacts" section.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/build-mobile.yml"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Generate Android platform scaffold
+        run: |
+          if [ ! -d android ]; then
+            flutter create --platforms=android --org com.devansh .
+          fi
+
+      - run: flutter pub get
+
+      - name: Build release APK
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL="$SUPABASE_URL" \
+            --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devansh-os-mobile
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
