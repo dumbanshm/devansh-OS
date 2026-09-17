@@ -69,6 +69,9 @@ function ensure() {
 
 export async function openLife() {
   ensure();
+  // Lock the dashboard behind us so its (taller-than-viewport) scrollbar doesn't
+  // linger next to this full-screen overlay.
+  document.body.classList.add("life-scroll-lock");
   overlayEl.classList.add("open");
   panelEl.classList.add("open");
   await load();
@@ -76,6 +79,7 @@ export async function openLife() {
 
 function close() {
   hideTooltip();
+  document.body.classList.remove("life-scroll-lock");
   overlayEl?.classList.remove("open");
   panelEl?.classList.remove("open");
 }
@@ -120,13 +124,15 @@ function renderLegend() {
   if (!state.birth_date) { el.innerHTML = ""; return; }
   const lived = state.current_week_index != null ? state.current_week_index + 1 : 0;
   const left = Math.max(0, state.total_weeks - lived);
-  const dormant = !state.scoring_active
-    ? `<span class="life-legend-note" title="Per-week value scoring is not active yet">value engine: inactive</span>`
-    : "";
+  const key = state.scoring_active
+    ? `<span class="life-legend-key" title="Weeks that cleared the quality bar">
+         <span class="life-legend-swatch"></span> productive week
+       </span>`
+    : `<span class="life-legend-note" title="Per-week value scoring is not active yet">value engine: inactive</span>`;
   el.innerHTML = `
     <span class="life-stat"><strong>${lived.toLocaleString()}</strong> lived</span>
     <span class="life-stat"><strong>${left.toLocaleString()}</strong> left</span>
-    ${dormant}`;
+    ${key}`;
 }
 
 // ── Grid ──────────────────────────────────────────────────────────────────────

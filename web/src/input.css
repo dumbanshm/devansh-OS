@@ -564,6 +564,9 @@ select.rk-int option { background: var(--panel); color: var(--text); }
 .st-dob select { width: 100%; }
 
 /* ── Life calendar (full-viewport overlay) ───────────────────────────────── */
+/* While the calendar is open, freeze the dashboard behind it (kills its
+   background scrollbar). */
+body.life-scroll-lock { overflow: hidden; }
 .life-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6);
   opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 300;
@@ -592,6 +595,8 @@ select.rk-int option { background: var(--panel); color: var(--text); }
 .life-legend { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--dim); }
 .life-stat strong { color: var(--text-strong); font-family: var(--mono); }
 .life-legend-note { font-family: var(--mono); font-size: 10px; color: var(--dimmer); text-transform: uppercase; letter-spacing: 0.08em; }
+.life-legend-key { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dim); }
+.life-legend-swatch { width: 10px; height: 10px; border-radius: 2px; background: #2f7a49; display: inline-block; }
 
 /* The grid sizes itself to fill the page (columns + cell size are computed in
    JS from the viewport aspect ratio); we just center it. */
@@ -614,7 +619,9 @@ select.rk-int option { background: var(--panel); color: var(--text); }
 }
 .life-cell:hover { transform: scale(1.35); z-index: 2; border-color: var(--text); }
 .life-cell.lived { background: var(--dimmer); border-color: transparent; }
-.life-cell.future { background: transparent; border-color: var(--border); }
+/* Future weeks read as hollow outlines — the shrinking runway is the mortality
+   signal, so keep solid-lived vs. outline-future unmistakable. */
+.life-cell.future { background: transparent; border-color: var(--border); opacity: 0.55; }
 .life-cell.current {
   background: var(--info); border-color: var(--text-strong);
   animation: life-pulse 1.8s ease-in-out infinite;
@@ -625,10 +632,11 @@ select.rk-int option { background: var(--panel); color: var(--text); }
 }
 .life-cell.has-milestone { background: var(--warn); border-color: transparent; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .life-cell .life-flag { width: 8px; height: 8px; color: var(--bg); }
-/* Dormant scoring bands — active only once the value engine ships. */
-.life-cell.band-low { background: #2f4a38; }
-.life-cell.band-mid { background: #3f9a5a; }
-.life-cell.band-high { background: #63d98a; }
+/* Additive, green-only week scoring (no red). A week earns a mark only when it
+   clears the quality bar; misses stay neutral like .lived. Active once the value
+   engine ships — dormant today (all weeks report band "lived"). */
+.life-cell.band-good { background: #2f7a49; border-color: transparent; }
+.life-cell.band-great { background: #4fc978; border-color: transparent; }
 
 .life-tooltip {
   position: fixed; z-index: 400; pointer-events: none; opacity: 0;

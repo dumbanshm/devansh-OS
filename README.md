@@ -72,9 +72,14 @@ Browser ──fetch──▶ FastAPI (/api) ──reads──▶ SQLite ◀─�
 | LeetCode   | unofficial GraphQL calendar    | problems solved   | 1     |
 | Gym        | manual (`g`)                   | workout           | 1     |
 | Sleep      | manual (`s 7.5`)               | hours slept       | 1     |
-| Deep Work  | manual (`d 3`)                 | focused hours     | 1     |
+| Claude     | `~/.claude/projects/**/*.jsonl`| hours / tokens    | 1     |
+| Protein    | manual UI entry                | grams             | 1     |
+| Rituals    | manual UI entry                | habit adherence   | 1     |
 | ChemVecto  | stub                           | deployments …     | 2     |
-| Claude     | stub                           | hours / tokens …  | 2     |
+
+## Life Calendar (Life-in-Weeks)
+
+In addition to the daily heatmaps, Devansh OS includes a **Life Calendar** that visualizes your life in a 52-week × 90-year grid. You can log manual milestones directly to the grid to track your life's progress. It’s accessible from the dashboard and runs off the same core philosophy of raw, unvarnished truth.
 
 ## Quick start (local)
 
@@ -134,7 +139,6 @@ Press **`i`** (or `⌘/Ctrl-K`) anywhere to focus the command bar. Sub-3-second 
 |----------------|---------------------------------|
 | `g`            | gym workout completed today     |
 | `s 7.5`        | 7.5h sleep today                |
-| `d 3`          | 3h deep work today              |
 | `s 7 -1`       | 7h sleep, **yesterday**         |
 | `g yesterday`  | back-date a workout one day     |
 
